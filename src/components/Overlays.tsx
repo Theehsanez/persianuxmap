@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, ChevronDown, Flag, Globe2, Minus, Plus, ShieldCheck, SearchX } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useT } from '../lib/i18n'
@@ -9,10 +9,48 @@ import { useDesigner } from '../lib/data'
 import { Avatar } from './Avatar'
 import { Button, LogoMark, useEscape, useIsMobile } from './ui'
 
+// ————————————————————————————————— Count-up numbers
+
+export function useCountUp(target: number, duration = 1400) {
+  const [v, setV] = useState(0)
+  const from = useRef(0)
+  useEffect(() => {
+    const start = performance.now()
+    const a = from.current
+    let raf = 0
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / duration)
+      const e = 1 - Math.pow(1 - p, 4)
+      const x = Math.round(a + (target - a) * e)
+      setV(x)
+      if (p < 1) raf = requestAnimationFrame(tick)
+      else from.current = target
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target, duration])
+  return v
+}
+
+export function CountUp({ value }: { value: number }) {
+  const { n } = useT()
+  const ready = useStore((s) => s.mapReady)
+  return <>{n(useCountUp(ready ? value : 0))}</>
+}
+
+export function MapAttribution() {
+  return (
+    <span className="latin text-[10.5px] text-subtle/80" dir="ltr">
+      © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="hover:text-muted">OpenStreetMap</a> ·{' '}
+      <a href="https://openfreemap.org" target="_blank" rel="noreferrer" className="hover:text-muted">OpenFreeMap</a>
+    </span>
+  )
+}
+
 // ————————————————————————————————— Community stats (floating, collapsible)
 
 export function StatsCard() {
-  const { t, locale, n } = useT()
+  const { t, locale } = useT()
   const all = usePublicDesigners()
   const s = useStats(all)
   const [open, setOpen] = useState(true)
@@ -35,7 +73,9 @@ export function StatsCard() {
           [s.cities, t.statsCities],
         ].map(([v, l]) => (
           <div key={l as string}>
-            <div className="text-[19px] font-semibold tabular-nums tracking-tight">{n(v as number)}</div>
+            <div className="text-[19px] font-semibold tabular-nums tracking-tight">
+              <CountUp value={v as number} />
+            </div>
             <div className="text-[11.5px] text-subtle">{l}</div>
           </div>
         ))}
@@ -54,6 +94,9 @@ export function StatsCard() {
             <ShieldCheck size={13} className="mt-px shrink-0" />
             {t.privacy}
           </p>
+          <div className="mt-2">
+            <MapAttribution />
+          </div>
         </div>
       )}
     </div>

@@ -104,26 +104,80 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .markers > * { pointer-events: auto; position: absolute; left: 0; top: 0; will-change: transform, opacity; }
 
 .marker-cluster {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 34px;
-  padding-inline: 6px 12px;
+  display: grid;
+  place-items: center;
   border-radius: 999px;
-  background: var(--cluster-bg);
-  border: 1px solid rgb(255 255 255 / 0.09);
-  box-shadow: 0 0 0 4px rgb(95 212 196 / 0.04), 0 0 18px -4px rgb(95 212 196 / 0.28), 0 6px 16px -6px rgb(0 0 0 / 0.8);
+  animation: pop 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) var(--appear-delay, 0ms) both;
+}
+.cluster-core {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: #e9fbf8;
+  background: radial-gradient(circle at 35% 30%, #1f3a37, #122423 60%, #0e1b1a);
+  border: 1.5px solid rgb(95 212 196 / 0.55);
+  box-shadow: 0 0 0 4px rgb(95 212 196 / 0.07), 0 0 22px -2px rgb(95 212 196 / 0.45), 0 8px 18px -8px rgb(0 0 0 / 0.9);
+  transition: transform 0.25s cubic-bezier(0.2, 1.4, 0.4, 1), box-shadow 0.25s, border-color 0.25s;
+}
+/* Slow breathing ring so the map feels alive. */
+.cluster-halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 1px solid rgb(95 212 196 / 0.5);
+  animation: breathe 3.2s ease-out var(--breathe-delay, 0ms) infinite;
+  pointer-events: none;
+}
+@keyframes breathe {
+  0% { scale: 1; opacity: 0.7; }
+  80%, 100% { scale: 1.9; opacity: 0; }
+}
+.marker-cluster:hover { z-index: 5; }
+.marker-cluster:hover .cluster-core {
+  transform: scale(1.12);
+  border-color: rgb(134 229 216 / 0.9);
+  box-shadow: 0 0 0 6px rgb(95 212 196 / 0.12), 0 0 30px rgb(95 212 196 / 0.55), 0 8px 18px -8px rgb(0 0 0 / 0.9);
+}
+.marker-cluster.is-burst .cluster-core { animation: tap 0.45s ease; }
+.marker-cluster.is-burst::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 2px solid var(--color-accent);
+  animation: burst 0.7s ease-out forwards;
+}
+@keyframes tap { 40% { scale: 0.88; } 100% { scale: 1; } }
+@keyframes burst { from { scale: 1; opacity: 0.9; } to { scale: 2.6; opacity: 0; } }
+.cluster-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  translate: -50% 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #1b2026;
+  border: 1px solid var(--color-line-strong);
+  font-size: 12px;
+  color: var(--color-muted);
   white-space: nowrap;
-  transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
-  animation: pop 0.45s var(--ease) both;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, translate 0.2s var(--ease);
 }
-.marker-cluster:hover {
-  z-index: 5;
-  background: #1a1f25;
-  border-color: rgb(95 212 196 / 0.45);
-  box-shadow: 0 0 0 4px rgb(95 212 196 / 0.08), 0 0 24px -2px rgb(95 212 196 / 0.4), 0 8px 18px -6px rgb(0 0 0 / 0.8);
+.marker-cluster:hover .cluster-tip { opacity: 1; translate: -50% 0; }
+
+/* Avatars pop in (staggered) the moment their city opens up. */
+.marker-avatar.marker-appear .marker-avatar-ring {
+  animation: avatar-in 0.55s cubic-bezier(0.2, 1.5, 0.4, 1) var(--appear-delay, 0ms) both;
 }
-.marker-cluster.is-large { height: 38px; padding-inline: 7px 14px; }
+@keyframes avatar-in { from { scale: 0.2; opacity: 0; } to { scale: 1; opacity: 1; } }
 
 .marker-avatar {
   width: 30px;
@@ -218,7 +272,19 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 
 @media (max-width: 767px) {
   .marker-avatar { width: 34px; height: 34px; }
-  .marker-cluster { height: 38px; }
+}
+
+/* Staggered entrance for panel content. */
+.stagger > * { animation: fade-in 0.5s var(--ease) both; }
+.stagger > *:nth-child(2) { animation-delay: 40ms; }
+.stagger > *:nth-child(3) { animation-delay: 80ms; }
+.stagger > *:nth-child(4) { animation-delay: 120ms; }
+.stagger > *:nth-child(5) { animation-delay: 160ms; }
+.stagger > *:nth-child(6) { animation-delay: 200ms; }
+.stagger > *:nth-child(n + 7) { animation-delay: 240ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
 
 /* ——— Sheets & drawers ——— */

@@ -26,7 +26,7 @@ export function ProfileContent({ d, preview = false }: { d: Designer; preview?: 
   const nameOk = d.name[locale] || d.name.en || d.name.fa
 
   return (
-    <div className="flex flex-col">
+    <div className="stagger flex flex-col">
       <div className="px-6 pt-2 md:pt-6">
         <div className="relative w-fit">
           <span className="block rounded-full p-[3px] ring-1 ring-line-strong">

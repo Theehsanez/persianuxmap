@@ -9,12 +9,13 @@ import { Avatar } from '../components/Avatar'
 import { useT } from '../lib/i18n'
 import { BadgeCheck } from 'lucide-react'
 
+const hash = (s: string) => [...s].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7)
+
 type Cluster = { key: string; groups: CityGroup[]; count: number }
 
-// Cluster pills are anchored on their avatar stack (the city point) and extend towards the reading direction.
-const ANCHOR = 16
-const PILL_W = 150
-const MERGE_DY = 36
+/** Bubble diameter grows gently with the number of people. */
+export const bubbleSize = (count: number) => Math.round(Math.min(66, 30 + Math.sqrt(count) * 4.4))
+const MERGE_GAP = 6
 
 export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designer[] }) {
   const { locale, n } = useT()
@@ -35,7 +36,6 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
 
   const update = useCallback(() => {
     const z = map.getZoom()
-    const rtl = document.documentElement.dir === 'rtl'
     const { clientWidth: W, clientHeight: H } = map.getContainer()
     const per = groups.map((g) => ({ g, p: map.project([g.city.lng, g.city.lat]), t: splitProgress(z, g.city.lat, g.members.length) }))
 
@@ -43,13 +43,11 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
     const out: { key: string; groups: CityGroup[]; x: number; y: number; t: number; count: number }[] = []
     for (const x of per) {
       if (x.t >= 1) continue
+      // Merge when two bubbles would overlap.
+      const r = bubbleSize(x.g.members.length) / 2
       const host =
         x.t < 0.02
-          ? out.find((c) => {
-              if (c.t >= 0.02 || Math.abs(c.y - x.p.y) > MERGE_DY) return false
-              // Merge when the two pills would overlap (pills extend PILL_W towards the reading direction).
-              return Math.abs(x.p.x - c.x) < PILL_W
-            })
+          ? out.find((c) => c.t < 0.02 && Math.hypot(c.x - x.p.x, c.y - x.p.y) < r + bubbleSize(c.count) / 2 + MERGE_GAP)
           : undefined
       if (host) {
         host.groups.push(x.g)
@@ -64,9 +62,8 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
     for (const c of out) {
       const el = clusterRefs.current.get(c.key)
       if (!el) continue
-      const off = c.x < -PILL_W - 40 || c.x > W + PILL_W + 40 || c.y < -60 || c.y > H + 60
-      el.style.transform = `translate3d(${c.x}px, ${c.y}px, 0) translate(${rtl ? `calc(-100% + ${ANCHOR}px)` : `-${ANCHOR}px`}, -50%) scale(${1 - c.t * 0.35})`
-      el.style.transformOrigin = rtl ? `calc(100% - ${ANCHOR}px) 50%` : `${ANCHOR}px 50%`
+      const off = c.x < -80 || c.x > W + 80 || c.y < -80 || c.y > H + 80
+      el.style.transform = `translate3d(${c.x}px, ${c.y}px, 0) translate(-50%, -50%) scale(${1 - c.t * 0.5})`
       el.style.opacity = String(1 - c.t)
       el.style.visibility = off ? 'hidden' : 'visible'
       el.style.pointerEvents = c.t < 0.5 ? 'auto' : 'none'
@@ -92,7 +89,17 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
         if (!el) continue
         if (x.t <= 0.001) {
           el.style.visibility = 'hidden'
+          if (el.dataset.shown) {
+            delete el.dataset.shown
+            el.classList.remove('marker-appear')
+          }
           continue
+        }
+        if (!el.dataset.shown) {
+          // Staggered pop the first time a person becomes visible after their city opens.
+          el.dataset.shown = '1'
+          el.style.setProperty('--appear-delay', `${Math.min(x.g.members.indexOf(d), 24) * 22}ms`)
+          el.classList.add('marker-appear')
         }
         const q = map.project(pos!.get(d.id)!)
         const px = x.p.x + (q.x - x.p.x) * x.t
@@ -140,12 +147,7 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
           className="city-area"
           style={{ visibility: 'hidden' }}
           aria-hidden
-        >
-          <span className="city-area-label">
-            <span className="text-text/80">{g.city[locale]}</span>
-            <span className="tabular-nums">{n(g.members.length)}</span>
-          </span>
-        </div>
+        />
       ))}
       {groups.map((g) =>
         g.members.map((d) => (
@@ -176,10 +178,9 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
           </button>
         )),
       )}
-      {clusters.map((c) => {
-        const lead = c.groups[0]
-        const faces = c.groups.flatMap((g) => g.members).slice(0, 3)
-        const extra = c.groups.length - 1
+      {clusters.map((c, i) => {
+        const size = bubbleSize(c.count)
+        const names = c.groups.map((g) => g.city[locale])
         return (
           <button
             key={c.key}
@@ -188,21 +189,31 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
               else clusterRefs.current.delete(c.key)
             }}
             type="button"
-            onClick={() => onCluster(c)}
+            onClick={(e) => {
+              const el = e.currentTarget
+              el.classList.remove('is-burst')
+              void el.offsetWidth // restart the burst animation
+              el.classList.add('is-burst')
+              onCluster(c)
+            }}
             className={`marker-cluster ${c.count >= 20 ? 'is-large' : ''}`}
-            title={c.groups.map((g) => g.city[locale]).join(' · ')}
-            style={{ visibility: 'hidden' }}
+            aria-label={`${names.join('، ')} · ${n(c.count)}`}
+            style={{
+              visibility: 'hidden',
+              width: size,
+              height: size,
+              ['--appear-delay' as string]: `${Math.min(i, 30) * 35}ms`,
+              ['--breathe-delay' as string]: `${(hash(c.key) % 3000) - 3000}ms`,
+            }}
           >
-            <span className="flex -space-x-2">
-              {faces.map((d) => (
-                <span key={d.id} className="rounded-full ring-2 ring-[var(--cluster-bg)]">
-                  <Avatar d={d} size={20} />
-                </span>
-              ))}
+            <span className="cluster-halo" />
+            <span className="cluster-core" style={{ fontSize: size > 50 ? 16 : size > 40 ? 14 : 13 }}>
+              {n(c.count)}
             </span>
-            <span className="text-[13px] font-semibold tabular-nums text-text">{n(c.count)}</span>
-            <span className="max-w-[9rem] truncate text-[12.5px] text-muted">{lead.city[locale]}</span>
-            {extra > 0 && <span className="rounded-full bg-white/[0.07] px-1.5 text-[11px] font-medium text-muted">+{n(extra)}</span>}
+            <span className="cluster-tip">
+              {names.slice(0, 3).join(' · ')}
+              {names.length > 3 ? ` +${n(names.length - 3)}` : ''}
+            </span>
           </button>
         )
       })}

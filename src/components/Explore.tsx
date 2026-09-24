@@ -8,6 +8,7 @@ import { mapApi } from '../map/mapApi'
 import { Avatar } from './Avatar'
 import { CloseButton, Sheet, useEscape, useIsMobile } from './ui'
 import { focusDesignerOnMap } from './SearchBox'
+import { CountUp, MapAttribution } from './Overlays'
 
 function ExploreContent() {
   const { t, locale, n } = useT()
@@ -23,7 +24,7 @@ function ExploreContent() {
   const leave = () => mobile && setExplore(false)
 
   return (
-    <div className="flex flex-col gap-7 px-6 pt-2 pb-8 md:pt-6">
+    <div className="stagger flex flex-col gap-7 px-6 pt-2 pb-8 md:pt-6">
       <div className="pe-10">
         <p className="text-[12px] font-medium tracking-wide text-accent uppercase">{t.explore}</p>
         <h2 className="mt-1 text-[22px] leading-tight font-semibold tracking-[-0.015em]">{t.exploreTitle}</h2>
@@ -37,7 +38,9 @@ function ExploreContent() {
           [stats.cities, t.statsCities],
         ].map(([v, l]) => (
           <div key={l as string} className="rounded-2xl border border-line bg-white/[0.02] px-3 py-3">
-            <div className="text-[22px] font-semibold tabular-nums tracking-tight">{n(v as number)}</div>
+            <div className="text-[22px] font-semibold tabular-nums tracking-tight">
+              <CountUp value={v as number} />
+            </div>
             <div className="text-[12px] text-muted">{l}</div>
           </div>
         ))}
@@ -155,6 +158,7 @@ function ExploreContent() {
           ))}
         </div>
       </section>
+      <MapAttribution />
     </div>
   )
 }
