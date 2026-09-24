@@ -11,6 +11,8 @@ export type NeuralFrame = {
   people: Map<string, { x: number; y: number }>
   w: number
   h: number
+  /** Width of one world copy in px — the map repeats every worldW horizontally. */
+  worldW: number
 }
 
 type Edge = { a: string; b: string; phase: number; speed: number }
@@ -29,7 +31,7 @@ const km = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) =>
   return 2 * R * Math.asin(Math.sqrt(s))
 }
 
-/** City ↔ city: a minimum spanning tree (so everyone is connected) plus each city's nearest neighbour. */
+/** City ↔ city: a minimum spanning tree (so everyone is connected) plus each city's two nearest neighbours. */
 function cityEdges(groups: CityGroup[]): Edge[] {
   const cs = groups.map((g) => g.city)
   if (cs.length < 2) return []
@@ -50,9 +52,24 @@ function cityEdges(groups: CityGroup[]): Edge[] {
     set.add(key(best![0], best![1]))
   }
   for (const a of cs) {
-    let best: [string, number] | null = null
-    for (const b of cs) if (b !== a && (!best || km(a, b) < best[1])) best = [b.id, km(a, b)]
-    if (best) set.add(key(a.id, best[0]))
+    cs.filter((b) => b !== a)
+      .map((b) => ({ id: b.id, d: km(a, b) }))
+      .sort((x, y) => x.d - y.d)
+      .slice(0, 2)
+      .forEach((b) => set.add(key(a.id, b.id)))
+  }
+  // Close the loop around the globe: the two shortest links that cross the date line (e.g. Vancouver ↔ Tokyo).
+  const pacific: { k: string; d: number }[] = []
+  for (const a of cs) for (const b of cs) if (a.id < b.id && Math.abs(a.lng - b.lng) > 180) pacific.push({ k: key(a.id, b.id), d: km(a, b) })
+  pacific.sort((x, y) => x.d - y.d)
+  const used = new Set<string>()
+  for (const p of pacific) {
+    const [a, b] = p.k.split('|')
+    if (used.has(a) || used.has(b)) continue // spread the bridges over different cities
+    set.add(p.k)
+    used.add(a)
+    used.add(b)
+    if (used.size >= 4) break
   }
   return [...set].map((k) => {
     const [a, b] = k.split('|')
@@ -161,36 +178,43 @@ export function NeuralLayer({
       const off = (x0: number, y0: number, x1: number, y1: number) =>
         (x0 < -50 && x1 < -50) || (x0 > f.w + 50 && x1 > f.w + 50) || (y0 < -50 && y1 < -50) || (y0 > f.h + 50 && y1 > f.h + 50)
 
-      // ── City ↔ city axons
+      // ── City ↔ city axons. The world repeats, so each link takes the short way round
+      // and is drawn on every visible copy — lines leaving one edge come back in from the other.
       for (const e of inter) {
-        const A = f.cityAnchor.get(e.a)
-        const B = f.cityAnchor.get(e.b)
-        if (!A || !B || A.cluster === B.cluster) continue
-        if (off(A.x, A.y, B.x, B.y)) continue
-        const len = Math.hypot(B.x - A.x, B.y - A.y)
-        if (len < 30) continue
-        const { cx, cy } = curve(A.x, A.y, B.x, B.y, 0.18 * (e.phase > 0.5 ? 1 : -1))
-        const grad = ctx.createLinearGradient(A.x, A.y, B.x, B.y)
-        grad.addColorStop(0, 'rgba(95, 212, 196, 0.42)')
-        grad.addColorStop(0.5, 'rgba(95, 212, 196, 0.14)')
-        grad.addColorStop(1, 'rgba(95, 212, 196, 0.42)')
-        ctx.strokeStyle = grad
-        ctx.lineWidth = 1.2
-        ctx.setLineDash([])
-        ctx.beginPath()
-        ctx.moveTo(A.x, A.y)
-        ctx.quadraticCurveTo(cx, cy, B.x, B.y)
-        ctx.stroke()
-        if (reduce) continue
-        // Signals: a glowing impulse with a short tail, sometimes one each way.
-        for (const [dir, ph] of [[1, e.phase], [-1, e.phase + 0.5]] as const) {
-          if (dir === -1 && e.phase < 0.55) continue
-          const s = (time * e.speed * (240 / Math.max(240, len)) + ph) % 1
-          for (let i = 0; i < 6; i++) {
-            const si = dir === 1 ? s - i * 0.012 : 1 - s + i * 0.012
-            if (si < 0 || si > 1) continue
-            const [x, y] = at(A.x, A.y, cx, cy, B.x, B.y, si)
-            glowDot(x, y, i === 0 ? 7 : 4 - i * 0.5, i === 0 ? 0.9 : 0.35 - i * 0.05)
+        const A0 = f.cityAnchor.get(e.a)
+        const B0 = f.cityAnchor.get(e.b)
+        if (!A0 || !B0 || A0.cluster === B0.cluster) continue
+        const W = f.worldW
+        const bx = B0.x + W * Math.round((A0.x - B0.x) / W)
+        for (const k of [-1, 0, 1]) {
+          const A = { x: A0.x + k * W, y: A0.y }
+          const B = { x: bx + k * W, y: B0.y }
+          if (off(A.x, A.y, B.x, B.y)) continue
+          const len = Math.hypot(B.x - A.x, B.y - A.y)
+          if (len < 30) continue
+          const { cx, cy } = curve(A.x, A.y, B.x, B.y, 0.18 * (e.phase > 0.5 ? 1 : -1))
+          const grad = ctx.createLinearGradient(A.x, A.y, B.x, B.y)
+          grad.addColorStop(0, 'rgba(95, 212, 196, 0.42)')
+          grad.addColorStop(0.5, 'rgba(95, 212, 196, 0.14)')
+          grad.addColorStop(1, 'rgba(95, 212, 196, 0.42)')
+          ctx.strokeStyle = grad
+          ctx.lineWidth = 1.2
+          ctx.setLineDash([])
+          ctx.beginPath()
+          ctx.moveTo(A.x, A.y)
+          ctx.quadraticCurveTo(cx, cy, B.x, B.y)
+          ctx.stroke()
+          if (reduce) continue
+          // Signals: a glowing impulse with a short tail, sometimes one each way.
+          for (const [dir, ph] of [[1, e.phase], [-1, e.phase + 0.5]] as const) {
+            if (dir === -1 && e.phase < 0.55) continue
+            const s = (time * e.speed * (240 / Math.max(240, len)) + ph) % 1
+            for (let i = 0; i < 6; i++) {
+              const si = dir === 1 ? s - i * 0.012 : 1 - s + i * 0.012
+              if (si < 0 || si > 1) continue
+              const [x, y] = at(A.x, A.y, cx, cy, B.x, B.y, si)
+              glowDot(x, y, i === 0 ? 7 : 4 - i * 0.5, i === 0 ? 0.9 : 0.35 - i * 0.05)
+            }
           }
         }
       }

@@ -189,6 +189,12 @@ export function baseStyle(world: FeatureCollection, opts: { detail?: boolean; lo
   }
 }
 
+/**
+ * Never zoom out so far that one world copy is narrower than the screen.
+ * That keeps every city on screen at most once, so a single marker per city is enough.
+ */
+const minZoomFor = (width: number) => Math.max(0.3, Math.log2(width / 512) + 0.02)
+
 export function MapView() {
   const el = useRef<HTMLDivElement>(null)
   const [map, setLocalMap] = useState<MLMap | null>(null)
@@ -207,9 +213,10 @@ export function MapView() {
         container: el.current,
         style: baseStyle(world, { detail: true, locale: useStore.getState().locale }),
         ...(isMobile() ? MOBILE_START : { bounds: WORLD_BOUNDS, fitBoundsOptions: { padding: viewPadding() } }),
-        minZoom: 0.6,
+        minZoom: minZoomFor(el.current.clientWidth),
         maxZoom: 15,
-        renderWorldCopies: false,
+        // The world repeats endlessly to the left and right.
+        renderWorldCopies: true,
         attributionControl: false,
         dragRotate: false,
         pitchWithRotate: false,
@@ -217,6 +224,7 @@ export function MapView() {
         fadeDuration: 0,
       })
       m = mm
+      mm.on('resize', () => mm.setMinZoom(minZoomFor(mm.getContainer().clientWidth)))
       mm.touchZoomRotate.disableRotation()
       mm.keyboard.disableRotation()
       // Detail tiles are optional: if OpenFreeMap is unreachable the country map still renders.

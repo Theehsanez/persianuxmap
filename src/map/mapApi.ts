@@ -10,6 +10,11 @@ export const setMap = (m: MLMap | null) => {
 }
 export const getMap = () => map
 
+/** The copy of `lng` closest to the current view (the map repeats every 360°), so flights take the short way round. */
+export function nearLng(lng: number, ref = map?.getCenter().lng ?? 0) {
+  return lng + 360 * Math.round((ref - lng) / 360)
+}
+
 export const isMobile = () => window.matchMedia('(max-width: 767px)').matches
 
 /** Keep the focus point clear of floating UI (nav, drawer, bottom sheets). */
@@ -42,21 +47,23 @@ export const mapApi = {
   flyToCity(cityId: string, n: number) {
     const c = cityById[cityId]
     if (!map || !c) return
-    map.flyTo({ center: [c.lng, c.lat], zoom: splitZoom(c.lat, n), padding: viewPadding(), speed: 1.8, curve: 1.45, maxDuration: 2600, essential: true })
+    map.flyTo({ center: [nearLng(c.lng), c.lat], zoom: splitZoom(c.lat, n), padding: viewPadding(), speed: 1.8, curve: 1.45, maxDuration: 2600, essential: true })
   },
   flyToPoint(lngLat: [number, number], zoom: number) {
     if (!map) return
-    map.flyTo({ center: lngLat, zoom: Math.max(map.getZoom(), zoom), padding: viewPadding(), speed: 1.8, curve: 1.45, maxDuration: 2600, essential: true })
+    map.flyTo({ center: [nearLng(lngLat[0]), lngLat[1]], zoom: Math.max(map.getZoom(), zoom), padding: viewPadding(), speed: 1.8, curve: 1.45, maxDuration: 2600, essential: true })
   },
   fitCities(ids: string[], maxZoom = 9) {
     if (!map) return
     const cs = ids.map((id) => cityById[id]).filter(Boolean)
     if (!cs.length) return
     if (cs.length === 1) {
-      map.flyTo({ center: [cs[0].lng, cs[0].lat], zoom: Math.min(maxZoom, 8), padding: viewPadding(), essential: true })
+      map.flyTo({ center: [nearLng(cs[0].lng), cs[0].lat], zoom: Math.min(maxZoom, 8), padding: viewPadding(), essential: true })
       return
     }
-    const lngs = cs.map((c) => c.lng)
+    // Keep all cities on the same world copy as the first one, so bounds never span the whole globe the long way.
+    const ref = nearLng(cs[0].lng)
+    const lngs = cs.map((c) => nearLng(c.lng, ref))
     const lats = cs.map((c) => c.lat)
     map.fitBounds(
       [

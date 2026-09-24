@@ -39,7 +39,13 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
   const update = useCallback(() => {
     const z = map.getZoom()
     const { clientWidth: W, clientHeight: H } = map.getContainer()
-    const per = groups.map((g) => ({ g, p: map.project([g.city.lng, g.city.lat]), t: splitProgress(z, g.city.lat, g.members.length) }))
+    // Each city is drawn on the world copy nearest the view centre; its people move with it.
+    const centerLng = map.getCenter().lng
+    const shift = (lng: number) => 360 * Math.round((centerLng - lng) / 360)
+    const per = groups.map((g) => {
+      const dx = shift(g.city.lng)
+      return { g, dx, p: map.project([g.city.lng + dx, g.city.lat]), t: splitProgress(z, g.city.lat, g.members.length) }
+    })
 
     // 1. Screen-space merge of nearby clusters (only those fully clustered).
     const out: { key: string; groups: CityGroup[]; x: number; y: number; t: number; count: number }[] = []
@@ -61,7 +67,7 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
       sig.current = nextSig
       setClusters(out.map((c) => ({ key: c.key, groups: c.groups, count: c.count })))
     }
-    const nf: NeuralFrame = { cityAnchor: new Map(), cityT: new Map(), people: new Map(), w: W, h: H }
+    const nf: NeuralFrame = { cityAnchor: new Map(), cityT: new Map(), people: new Map(), w: W, h: H, worldW: 512 * 2 ** z }
     for (const c of out) for (const g of c.groups) nf.cityAnchor.set(g.city.id, { x: c.x, y: c.y, cluster: c.key })
     for (const x of per) {
       nf.cityT.set(x.g.city.id, x.t)
@@ -110,7 +116,8 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
           el.style.setProperty('--appear-delay', `${Math.min(x.g.members.indexOf(d), 24) * 22}ms`)
           el.classList.add('marker-appear')
         }
-        const q = map.project(pos!.get(d.id)!)
+        const [plng, plat] = pos!.get(d.id)!
+        const q = map.project([plng + x.dx, plat])
         const px = x.p.x + (q.x - x.p.x) * x.t
         const py = x.p.y + (q.y - x.p.y) * x.t
         const off = px < -40 || px > W + 40 || py < -40 || py > H + 40
