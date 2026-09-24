@@ -1,0 +1,236 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource/vazirmatn/400.css';
+@import '@fontsource/vazirmatn/500.css';
+@import '@fontsource/vazirmatn/600.css';
+@import '@fontsource/vazirmatn/700.css';
+
+@theme {
+  --color-bg: #090b0e;
+  --color-surface: #101317;
+  --color-surface-2: #161a1f;
+  --color-elevated: #1b2026;
+  --color-line: rgb(255 255 255 / 0.07);
+  --color-line-strong: rgb(255 255 255 / 0.13);
+  --color-text: #eceff2;
+  --color-muted: #9ba3ad;
+  --color-subtle: #69717b;
+  --color-accent: #5fd4c4;
+  --color-accent-strong: #86e5d8;
+  --color-accent-ink: #062520;
+  --color-accent-soft: rgb(95 212 196 / 0.12);
+  --color-danger: #f28b82;
+  --color-warn: #e8c07d;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-fa: 'Vazirmatn', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --shadow-float: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 12px 32px -12px rgb(0 0 0 / 0.7), 0 2px 6px rgb(0 0 0 / 0.35);
+  --animate-fade-in: fade-in 0.35s ease both;
+  --animate-pop: pop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+/* Keyframes use the individual `translate`/`scale` properties so they compose with inline transforms (map markers). */
+@keyframes fade-in {
+  from { opacity: 0; translate: 0 4px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes pop {
+  from { opacity: 0; scale: 0.9; }
+  to { opacity: 1; scale: 1; }
+}
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgb(95 212 196 / 0.55); }
+  100% { box-shadow: 0 0 0 18px rgb(95 212 196 / 0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+:root {
+  color-scheme: dark;
+  --cluster-bg: #14181d;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+html[lang='fa'] body { font-family: var(--font-fa); }
+html[lang='fa'] .latin { font-family: var(--font-sans); }
+
+::selection { background: rgb(95 212 196 / 0.3); }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+input:focus-visible, textarea:focus-visible { outline: none; }
+
+.scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / 0.12) transparent; }
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ——— Surfaces ——— */
+.surface {
+  background: rgb(16 19 23 / 0.86);
+  border: 1px solid var(--color-line);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+.surface-solid {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  box-shadow: var(--shadow-float);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgb(255 255 255 / 0.03), rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.03));
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* ——— Map ——— */
+.maplibregl-canvas { outline: none; }
+.map-vignette {
+  background:
+    radial-gradient(120% 90% at 50% 45%, transparent 55%, rgb(5 6 8 / 0.55) 100%);
+}
+.markers { pointer-events: none; }
+.markers > * { pointer-events: auto; position: absolute; left: 0; top: 0; will-change: transform, opacity; }
+
+.marker-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding-inline: 6px 12px;
+  border-radius: 999px;
+  background: var(--cluster-bg);
+  border: 1px solid rgb(255 255 255 / 0.09);
+  box-shadow: 0 0 0 4px rgb(95 212 196 / 0.04), 0 0 18px -4px rgb(95 212 196 / 0.28), 0 6px 16px -6px rgb(0 0 0 / 0.8);
+  white-space: nowrap;
+  transition: box-shadow 0.2s, border-color 0.2s, background 0.2s;
+  animation: pop 0.45s var(--ease) both;
+}
+.marker-cluster:hover {
+  z-index: 5;
+  background: #1a1f25;
+  border-color: rgb(95 212 196 / 0.45);
+  box-shadow: 0 0 0 4px rgb(95 212 196 / 0.08), 0 0 24px -2px rgb(95 212 196 / 0.4), 0 8px 18px -6px rgb(0 0 0 / 0.8);
+}
+.marker-cluster.is-large { height: 38px; padding-inline: 7px 14px; }
+
+.marker-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+}
+.marker-avatar::before { /* larger touch target */
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 999px;
+}
+.marker-avatar-ring {
+  display: block;
+  border-radius: 999px;
+  padding: 1.5px;
+  background: rgb(255 255 255 / 0.16);
+  box-shadow: 0 0 14px -3px rgb(95 212 196 / 0.35), 0 4px 10px -4px rgb(0 0 0 / 0.9);
+  transition: transform 0.2s var(--ease), background 0.2s, box-shadow 0.2s;
+}
+.marker-avatar:hover { z-index: 20; }
+.marker-avatar:hover .marker-avatar-ring { transform: scale(1.18); background: rgb(95 212 196 / 0.8); }
+.marker-avatar.is-me .marker-avatar-ring { background: var(--color-accent); }
+.marker-avatar.is-selected { z-index: 30; }
+.marker-avatar.is-selected .marker-avatar-ring {
+  transform: scale(1.3);
+  background: var(--color-accent);
+  box-shadow: 0 0 0 4px rgb(95 212 196 / 0.18), 0 0 24px rgb(95 212 196 / 0.45);
+}
+.marker-avatar.is-pulse .marker-avatar-ring { animation: pulse-ring 1.4s ease-out 4; }
+.marker-verified {
+  position: absolute;
+  inset-inline-end: -4px;
+  bottom: -3px;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-accent);
+}
+.marker-label {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  translate: -50% 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #1b2026;
+  border: 1px solid var(--color-line-strong);
+  box-shadow: 0 10px 24px -10px rgb(0 0 0 / 0.9);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, translate 0.2s var(--ease);
+}
+.marker-avatar:hover .marker-label,
+.marker-avatar.is-selected .marker-label { opacity: 1; translate: -50% 0; }
+
+/* Approximate area of a city once it has split into people — reinforces "around the city", never a point. */
+.markers > .city-area {
+  pointer-events: none;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, rgb(95 212 196 / 0.07), rgb(95 212 196 / 0.02) 70%, transparent);
+  border: 1px dashed rgb(95 212 196 / 0.14);
+}
+.city-area-label {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgb(9 11 14 / 0.7);
+  border: 1px solid var(--color-line);
+  font-size: 12px;
+  color: var(--color-subtle);
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .marker-avatar { width: 34px; height: 34px; }
+  .marker-cluster { height: 38px; }
+}
+
+/* ——— Sheets & drawers ——— */
+.drawer-enter { animation: drawer-in 0.42s var(--ease) both; }
+@keyframes drawer-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+[dir='rtl'] .drawer-enter { animation-name: drawer-in-rtl; }
+@keyframes drawer-in-rtl { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+.drawer-start-enter { animation: drawer-start-in 0.42s var(--ease) both; }
+@keyframes drawer-start-in { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+[dir='rtl'] .drawer-start-enter { animation-name: drawer-in; }
+.sheet-enter { animation: sheet-in 0.45s var(--ease) both; }
+@keyframes sheet-in { from { transform: translateY(100%); } to { transform: none; } }
+.backdrop-enter { animation: fade-in 0.3s ease both; }
+
+.maplibregl-ctrl-attrib { display: none; }
