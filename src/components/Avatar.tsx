@@ -4,7 +4,7 @@ import { useStore } from '../lib/store'
 
 type P = { d: Pick<Designer, 'name' | 'avatar'>; size?: number; className?: string }
 
-/** Initials monogram (or uploaded photo). Muted, per-person hue so the map feels human without stock photos. */
+/** Initials monogram (or uploaded photo). Near-greyscale with a faint per-person tint so the map feels human without stock photos. */
 export function Avatar({ d, size = 32, className = '' }: P) {
   const locale = useStore((s) => s.locale)
   const [failed, setFailed] = useState<string | null>(null)
@@ -35,8 +35,8 @@ export function Avatar({ d, size = 32, className = '' }: P) {
       className={`avatar inline-flex shrink-0 select-none items-center justify-center rounded-full font-semibold ${className}`}
       style={{
         ...style,
-        background: `radial-gradient(120% 120% at 30% 20%, hsl(${h} 32% 34%), hsl(${(h + 30) % 360} 30% 18%))`,
-        color: `hsl(${h} 45% 88%)`,
+        background: `linear-gradient(160deg, hsl(${h} 6% 30%), hsl(${h} 6% 19%))`,
+        color: 'rgb(255 255 255 / 0.85)',
         letterSpacing: locale === 'fa' ? 0 : '0.02em',
       }}
       aria-hidden

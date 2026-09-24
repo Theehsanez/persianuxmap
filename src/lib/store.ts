@@ -70,7 +70,8 @@ const LS = {
   },
 }
 
-const initialLocale = LS.get<Locale | null>('pux.locale', null) ?? (navigator.language?.startsWith('fa') ? 'fa' : 'en')
+// Persian first; the choice is remembered once someone switches.
+const initialLocale: Locale = LS.get<Locale | null>('pux.locale', null) ?? 'fa'
 
 let toastSeq = 0
 

@@ -174,7 +174,7 @@ export function SearchBox({ compact = false }: { compact?: boolean }) {
     <div ref={wrap} className="relative w-full">
       <div
         className={`flex items-center gap-2 rounded-2xl border bg-white/[0.04] px-3 transition-[border,box-shadow,background] ${compact ? 'h-11' : 'h-10'} ${
-          open ? 'border-accent/50 bg-white/[0.06] shadow-[0_0_0_4px_rgb(95_212_196/0.08)]' : 'border-line hover:border-line-strong'
+          open ? 'border-accent/50 bg-white/[0.06] shadow-[0_0_0_4px_rgb(255_255_255/0.08)]' : 'border-line hover:border-line-strong'
         }`}
       >
         <Search size={16} className="shrink-0 text-subtle" />

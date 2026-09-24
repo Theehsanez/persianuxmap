@@ -137,7 +137,7 @@ export function MobileTopBar() {
               <button
                 key={c.key}
                 onClick={c.remove}
-                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-accent/40 bg-[#10201e]/90 ps-3 pe-2 text-[12.5px] text-accent-strong backdrop-blur"
+                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-accent/40 bg-[#1a1c20]/90 ps-3 pe-2 text-[12.5px] text-accent-strong backdrop-blur"
               >
                 {c.label}
                 <X size={13} />

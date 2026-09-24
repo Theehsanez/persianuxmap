@@ -59,10 +59,7 @@ export function StatsCard() {
   return (
     <div className="surface animate-fade-in absolute start-4 bottom-4 z-20 w-[272px] overflow-hidden rounded-2xl">
       <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-2 px-4 pt-3 pb-2 text-start" aria-expanded={open}>
-        <span className="relative flex size-2">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-40" />
-          <span className="relative inline-flex size-2 rounded-full bg-accent" />
-        </span>
+        <span className="size-1.5 rounded-full bg-text/70" />
         <span className="flex-1 text-[12px] font-medium tracking-wide text-muted uppercase">{t.community}</span>
         <ChevronDown size={15} className={`text-subtle transition-transform ${open ? '' : 'rotate-180'}`} />
       </button>
@@ -319,7 +316,6 @@ export function LoadingScreen() {
     <div className={`pointer-events-none absolute inset-0 z-[45] grid place-items-center bg-bg transition-opacity duration-700 ${ready ? 'opacity-0' : 'opacity-100'}`} aria-busy={!ready}>
       <div className="flex flex-col items-center gap-5">
         <div className="relative">
-          <span className="absolute inset-0 animate-ping rounded-[10px] bg-accent/20" />
           <LogoMark size={48} />
         </div>
         <div className="flex flex-col items-center gap-2">

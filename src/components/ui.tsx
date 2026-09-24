@@ -23,7 +23,7 @@ type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 export function btnCls(variant: BtnProps['variant'] = 'secondary', size: BtnProps['size'] = 'md') {
   const v = {
-    primary: 'bg-accent text-accent-ink hover:bg-accent-strong shadow-[0_0_0_1px_rgb(95_212_196/0.4),0_6px_20px_-8px_rgb(95_212_196/0.6)] font-semibold',
+    primary: 'bg-accent text-accent-ink hover:bg-white font-semibold',
     secondary: 'bg-white/[0.06] text-text hover:bg-white/[0.1] border border-line',
     outline: 'border border-line-strong text-text hover:bg-white/[0.05]',
     ghost: 'text-muted hover:text-text hover:bg-white/[0.06]',
@@ -78,7 +78,7 @@ export function Chip({ active, onClick, children, className = '', count }: { act
 export function VerificationBadge({ v, compact }: { v: Verification; compact?: boolean }) {
   const { t } = useT()
   const cfg = {
-    verified: { icon: <BadgeCheck size={14} />, label: t.verifiedDesigner, cls: 'text-accent-strong bg-accent-soft border-accent/25' },
+    verified: { icon: <BadgeCheck size={14} />, label: t.verifiedDesigner, cls: 'text-text bg-white/[0.05] border-white/15' },
     email: { icon: <MailCheck size={14} />, label: t.emailVerified, cls: 'text-muted bg-white/[0.04] border-line' },
     pending: { icon: <Clock size={14} />, label: t.pendingReview, cls: 'text-warn bg-warn/10 border-warn/25' },
     unverified: { icon: <Clock size={14} />, label: t.unverified, cls: 'text-subtle bg-white/[0.03] border-line' },
@@ -122,7 +122,7 @@ export function Field({ label, hint, error, optional, children, htmlFor }: { lab
 }
 
 export const inputCls =
-  'h-11 w-full rounded-xl border border-line bg-white/[0.03] px-3.5 text-[14.5px] text-text placeholder:text-subtle outline-none transition-[border,box-shadow,background] focus:border-accent/60 focus:bg-white/[0.05] focus:shadow-[0_0_0_4px_rgb(95_212_196/0.1)]'
+  'h-11 w-full rounded-xl border border-line bg-white/[0.03] px-3.5 text-[14.5px] text-text placeholder:text-subtle outline-none transition-[border,box-shadow,background] focus:border-accent/60 focus:bg-white/[0.05] focus:shadow-[0_0_0_4px_rgb(255_255_255/0.1)]'
 
 /** Dismiss on outside click + Escape. */
 export function useDismiss(open: boolean, onClose: () => void, ref: React.RefObject<HTMLElement | null>) {
@@ -240,13 +240,13 @@ export function Logo({ size = 28, withText = true, sub }: { size?: number; withT
 export function LogoMark({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden className="shrink-0">
-      <rect width="32" height="32" rx="9" fill="#12171b" />
+      <rect width="32" height="32" rx="9" fill="#15171a" />
       <rect x="0.5" y="0.5" width="31" height="31" rx="8.5" fill="none" stroke="rgb(255 255 255 / 0.08)" />
-      <g transform="translate(16 16)" fill="none" stroke="#5fd4c4" strokeWidth="1.6" strokeLinejoin="round">
+      <g transform="translate(16 16)" fill="none" stroke="#f4f4f5" strokeWidth="1.6" strokeLinejoin="round">
         <rect x="-6.6" y="-6.6" width="13.2" height="13.2" rx="1.4" />
         <rect x="-6.6" y="-6.6" width="13.2" height="13.2" rx="1.4" transform="rotate(45)" />
       </g>
-      <circle cx="16" cy="16" r="2.5" fill="#5fd4c4" />
+      <circle cx="16" cy="16" r="2.5" fill="#f4f4f5" />
     </svg>
   )
 }

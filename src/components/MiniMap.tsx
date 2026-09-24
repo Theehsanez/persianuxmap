@@ -69,14 +69,14 @@ export function MiniMap({ city, d, height = 150, zoom = 4.2, label }: { city: Ci
         </svg>
       )}
       <div className="pointer-events-none absolute inset-0 grid place-items-center">
-        <span className="absolute size-24 rounded-full border border-dashed border-accent/25 bg-accent/[0.06]" />
-        <span className="absolute size-12 rounded-full bg-accent/[0.08]" />
+        <span className="absolute size-24 rounded-full border border-dashed border-white/20 bg-white/[0.03]" />
+        <span className="absolute size-12 rounded-full bg-white/[0.04]" />
         {d ? (
-          <span className="animate-pop relative rounded-full bg-accent p-[2px] shadow-[0_0_20px_rgb(95_212_196/0.5)]">
+          <span className="animate-pop relative rounded-full bg-accent p-[2px]">
             <Avatar d={d} size={30} />
           </span>
         ) : (
-          <span className="relative size-3 rounded-full bg-accent shadow-[0_0_12px_rgb(95_212_196/0.8)]" />
+          <span className="relative size-3 rounded-full bg-accent " />
         )}
       </div>
       <div className="pointer-events-none absolute inset-0 rounded-2xl shadow-[inset_0_0_30px_rgb(0_0_0/0.55)]" />

@@ -15,12 +15,12 @@ import { MarkerLayer } from './MarkerLayer'
 import { useFilteredDesigners, usePublicDesigners } from '../lib/data'
 
 export const MAP_COLORS = {
-  ocean: '#090b0e',
+  ocean: '#0a0b0d',
   land: '#14181d',
   landActive: '#191e25',
-  landHighlight: '#132421',
+  landHighlight: '#20242a',
   border: '#262c34',
-  borderHighlight: '#3c7f76',
+  borderHighlight: '#6b7079',
 }
 
 /**

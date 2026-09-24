@@ -68,7 +68,7 @@ function CodeInput({ value, onChange, invalid }: { value: string; onChange: (v: 
               refs.current[Math.min(5, v.length)]?.focus()
             }
           }}
-          className={`latin h-14 w-11 rounded-xl border bg-white/[0.03] text-center text-xl font-semibold tabular-nums outline-none transition-[border,box-shadow] focus:border-accent/60 focus:shadow-[0_0_0_4px_rgb(95_212_196/0.1)] sm:w-12 ${
+          className={`latin h-14 w-11 rounded-xl border bg-white/[0.03] text-center text-xl font-semibold tabular-nums outline-none transition-[border,box-shadow] focus:border-accent/60 focus:shadow-[0_0_0_4px_rgb(255_255_255/0.1)] sm:w-12 ${
             invalid ? 'border-danger/60' : 'border-line'
           }`}
         />

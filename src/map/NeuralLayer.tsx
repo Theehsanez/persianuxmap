@@ -151,12 +151,9 @@ export function NeuralLayer({
       const u = 1 - s
       return [u * u * x0 + 2 * u * s * cx + s * s * x1, u * u * y0 + 2 * u * s * cy + s * s * y1]
     }
+    // Signals are small, flat dots — no glow, keeps the map calm.
     const glowDot = (x: number, y: number, r: number, a: number) => {
-      const g = ctx.createRadialGradient(x, y, 0, x, y, r)
-      g.addColorStop(0, `rgba(190, 255, 246, ${a})`)
-      g.addColorStop(0.35, `rgba(95, 212, 196, ${a * 0.6})`)
-      g.addColorStop(1, 'rgba(95, 212, 196, 0)')
-      ctx.fillStyle = g
+      ctx.fillStyle = `rgba(255, 255, 255, ${a})`
       ctx.beginPath()
       ctx.arc(x, y, r, 0, Math.PI * 2)
       ctx.fill()
@@ -173,7 +170,7 @@ export function NeuralLayer({
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, f.w, f.h)
-      ctx.globalCompositeOperation = 'lighter'
+      ctx.globalCompositeOperation = 'source-over'
       const time = (now - start) / 1000
       const off = (x0: number, y0: number, x1: number, y1: number) =>
         (x0 < -50 && x1 < -50) || (x0 > f.w + 50 && x1 > f.w + 50) || (y0 < -50 && y1 < -50) || (y0 > f.h + 50 && y1 > f.h + 50)
@@ -194,11 +191,11 @@ export function NeuralLayer({
           if (len < 30) continue
           const { cx, cy } = curve(A.x, A.y, B.x, B.y, 0.18 * (e.phase > 0.5 ? 1 : -1))
           const grad = ctx.createLinearGradient(A.x, A.y, B.x, B.y)
-          grad.addColorStop(0, 'rgba(95, 212, 196, 0.42)')
-          grad.addColorStop(0.5, 'rgba(95, 212, 196, 0.14)')
-          grad.addColorStop(1, 'rgba(95, 212, 196, 0.42)')
+          grad.addColorStop(0, 'rgba(255, 255, 255, 0.22)')
+          grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.06)')
+          grad.addColorStop(1, 'rgba(255, 255, 255, 0.22)')
           ctx.strokeStyle = grad
-          ctx.lineWidth = 1.2
+          ctx.lineWidth = 0.8
           ctx.setLineDash([])
           ctx.beginPath()
           ctx.moveTo(A.x, A.y)
@@ -209,11 +206,11 @@ export function NeuralLayer({
           for (const [dir, ph] of [[1, e.phase], [-1, e.phase + 0.5]] as const) {
             if (dir === -1 && e.phase < 0.55) continue
             const s = (time * e.speed * (240 / Math.max(240, len)) + ph) % 1
-            for (let i = 0; i < 6; i++) {
-              const si = dir === 1 ? s - i * 0.012 : 1 - s + i * 0.012
+            for (let i = 0; i < 4; i++) {
+              const si = dir === 1 ? s - i * 0.01 : 1 - s + i * 0.01
               if (si < 0 || si > 1) continue
               const [x, y] = at(A.x, A.y, cx, cy, B.x, B.y, si)
-              glowDot(x, y, i === 0 ? 7 : 4 - i * 0.5, i === 0 ? 0.9 : 0.35 - i * 0.05)
+              glowDot(x, y, i === 0 ? 1.8 : 1.2, i === 0 ? 0.75 : 0.25 - i * 0.05)
             }
           }
         }
@@ -230,10 +227,10 @@ export function NeuralLayer({
         const hot = selected.current === e.a || selected.current === e.b
         // Each synapse "fires" now and then: its brightness breathes on its own rhythm.
         const fire = reduce ? 0.5 : 0.5 + 0.5 * Math.sin(time * (1.2 + e.speed) + e.phase * 12)
-        const alpha = t * (hot ? 0.9 : 0.16 + 0.34 * fire)
+        const alpha = t * (hot ? 0.6 : 0.07 + 0.13 * fire)
         const { cx, cy } = curve(A.x, A.y, B.x, B.y, 0.12 * (e.phase > 0.5 ? 1 : -1))
-        ctx.strokeStyle = `rgba(95, 212, 196, ${alpha})`
-        ctx.lineWidth = hot ? 1.8 : 1.2
+        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`
+        ctx.lineWidth = hot ? 1.2 : 0.8
         ctx.beginPath()
         ctx.moveTo(A.x, A.y)
         ctx.quadraticCurveTo(cx, cy, B.x, B.y)
@@ -241,7 +238,7 @@ export function NeuralLayer({
         if (reduce) continue
         const s = (time * e.speed + e.phase) % 1
         const [x, y] = at(A.x, A.y, cx, cy, B.x, B.y, e.phase > 0.5 ? s : 1 - s)
-        glowDot(x, y, hot ? 6 : 4.5, t * (hot ? 1 : 0.75))
+        glowDot(x, y, hot ? 2 : 1.5, t * (hot ? 0.9 : 0.55))
       }
       ctx.globalCompositeOperation = 'source-over'
     }

@@ -10,7 +10,6 @@ import { useT } from '../lib/i18n'
 import { BadgeCheck } from 'lucide-react'
 import { NeuralLayer, type NeuralFrame } from './NeuralLayer'
 
-const hash = (s: string) => [...s].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7)
 
 type Cluster = { key: string; groups: CityGroup[]; count: number }
 
@@ -221,10 +220,8 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
               width: size,
               height: size,
               ['--appear-delay' as string]: `${Math.min(i, 30) * 35}ms`,
-              ['--breathe-delay' as string]: `${(hash(c.key) % 3000) - 3000}ms`,
             }}
           >
-            <span className="cluster-halo" />
             <span className="cluster-core" style={{ fontSize: size > 50 ? 16 : size > 40 ? 14 : 13 }}>
               {n(c.count)}
             </span>
