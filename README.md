@@ -34,6 +34,7 @@ On first start the database is created, migrated and seeded with ~236 demo desig
 |---|---|---|
 | `DATABASE_URL` | `file:./data/persianuxmap.db` | `file:` path locally, or `libsql://…` for Turso |
 | `DATABASE_AUTH_TOKEN` | — | Turso database token |
+| `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` | — | Also accepted. Vercel's Turso integration sets these automatically. |
 | `EXPOSE_EMAIL_CODES` | `true` | No mail provider is wired up yet, so the API returns the code and the "demo inbox" shows it. Set this to `false` once real email is sending. |
 | `PORT` | `3000` | used by `npm start` |
 
