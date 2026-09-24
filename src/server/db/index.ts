@@ -10,16 +10,33 @@ export type DB = LibSQLDatabase<typeof schema>
 
 let ready: Promise<DB> | null = null
 
-// DATABASE_* is ours; TURSO_* is what Vercel's Turso integration sets automatically.
-const dbUrl = () => (process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL)?.trim() || undefined
-const dbToken = () => (process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN)?.trim() || undefined
+/**
+ * Find the database settings. DATABASE_* is ours; Vercel's Turso integration sets TURSO_* — or
+ * `<PREFIX>_…` names when a custom prefix is chosen — so as a fallback we pick up any variable holding a
+ * libsql:// URL and a token variable next to it.
+ */
+function findEnv(): { url?: string; urlVar?: string; token?: string; tokenVar?: string } {
+  const env = process.env
+  const pick = (names: string[]) => names.find((n) => env[n]?.trim())
+  let urlVar = pick(['DATABASE_URL', 'TURSO_DATABASE_URL'])
+  urlVar ??= Object.keys(env).find((k) => /^libsql:\/\//.test(env[k]?.trim() ?? ''))
+  const prefix = urlVar?.replace(/_?(TURSO_)?(DATABASE_)?URL$/, '')
+  let tokenVar = pick(['DATABASE_AUTH_TOKEN', 'TURSO_AUTH_TOKEN'])
+  tokenVar ??= Object.keys(env).find((k) => k.endsWith('TOKEN') && !!prefix && k.startsWith(prefix) && env[k]?.trim())
+  tokenVar ??= Object.keys(env).find((k) => /(TURSO|LIBSQL).*TOKEN$/.test(k) && env[k]?.trim())
+  return { url: urlVar ? env[urlVar]!.trim() : undefined, urlVar, token: tokenVar ? env[tokenVar]!.trim() : undefined, tokenVar }
+}
+const dbUrl = () => findEnv().url
+const dbToken = () => findEnv().token
 
 const onServerless = () => !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)
 
 /** Non-secret description of the database configuration, for /api/health and error messages. */
 export function databaseInfo() {
-  const url = dbUrl()
+  const { url, urlVar, tokenVar } = findEnv()
   return {
+    urlVar: urlVar ?? null,
+    tokenVar: tokenVar ?? null,
     urlScheme: url ? url.split(':')[0] : 'unset (using local file)',
     host: url && !url.startsWith('file:') ? url.replace(/^[a-z]+:\/\//, '').split(/[/?]/)[0] : undefined,
     authToken: dbToken() ? 'set' : 'unset',
