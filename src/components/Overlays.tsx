@@ -7,6 +7,7 @@ import { skillById } from '../data/taxonomy'
 import { mapApi, getMap } from '../map/mapApi'
 import { useDesigner } from '../lib/data'
 import { call } from '../lib/actions'
+import { STATIC_DEMO } from '../api/client'
 import { Avatar } from './Avatar'
 import { Button, LogoMark, useEscape, useIsMobile } from './ui'
 
@@ -308,7 +309,10 @@ export function Toasts() {
 export function LoadingScreen() {
   const { t } = useT()
   const ready = useStore((s) => s.mapReady && s.designersLoaded)
+  const loadError = useStore((s) => s.loadError)
+  const init = useStore((s) => s.init)
   const [gone, setGone] = useState(false)
+  const [retrying, setRetrying] = useState(false)
   useEffect(() => {
     if (ready) {
       const id = setTimeout(() => setGone(true), 700)
@@ -317,20 +321,50 @@ export function LoadingScreen() {
   }, [ready])
   if (gone) return null
   return (
-    <div className={`pointer-events-none absolute inset-0 z-[45] grid place-items-center bg-bg transition-opacity duration-700 ${ready ? 'opacity-0' : 'opacity-100'}`} aria-busy={!ready}>
-      <div className="flex flex-col items-center gap-5">
-        <div className="relative">
-          <LogoMark size={48} />
-        </div>
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-[14px] text-muted">{t.loadingMap}</p>
-          <div className="flex gap-1.5">
-            {[64, 40, 52].map((w, i) => (
-              <span key={i} className="skeleton h-1.5 rounded-full" style={{ width: w }} />
-            ))}
+    <div
+      className={`absolute inset-0 z-[45] grid place-items-center bg-bg px-6 transition-opacity duration-700 ${ready ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
+      aria-busy={!ready && !loadError}
+    >
+      {loadError ? (
+        <div className="animate-fade-in flex max-w-sm flex-col items-center text-center">
+          <LogoMark size={44} />
+          <h2 className="mt-5 text-[17px] font-semibold">{t.loadErrorTitle}</h2>
+          <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">{t.loadErrorBody}</p>
+          <code className="latin mt-3 max-w-full truncate rounded-lg bg-white/[0.04] px-2.5 py-1 text-[11.5px] text-subtle" dir="ltr" title={loadError}>
+            {loadError}
+          </code>
+          <div className="mt-5 flex items-center gap-3">
+            <Button
+              variant="primary"
+              disabled={retrying}
+              onClick={async () => {
+                setRetrying(true)
+                await init()
+                setRetrying(false)
+              }}
+            >
+              {t.retry}
+            </Button>
+            {!STATIC_DEMO && (
+              <a href={`${import.meta.env.BASE_URL}api/health`} target="_blank" rel="noreferrer" className="text-[13px] text-muted underline-offset-4 hover:text-text hover:underline">
+                {t.serverStatus}
+              </a>
+            )}
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col items-center gap-5">
+          <LogoMark size={48} />
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-[14px] text-muted">{t.loadingMap}</p>
+            <div className="flex gap-1.5">
+              {[64, 40, 52].map((w, i) => (
+                <span key={i} className="skeleton h-1.5 rounded-full" style={{ width: w }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

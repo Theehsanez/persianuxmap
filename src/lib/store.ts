@@ -17,6 +17,8 @@ type State = {
   locale: Locale
   designers: Designer[]
   designersLoaded: boolean
+  /** Set when the first API load fails, so the loading screen can say so instead of spinning forever. */
+  loadError: string | null
   account: Account | null
   filters: Filters
   drawer: Drawer
@@ -79,6 +81,7 @@ export const useStore = create<State>((set, get) => ({
   locale: initialLocale,
   designers: [],
   designersLoaded: false,
+  loadError: null,
   account: null,
   filters: EMPTY_FILTERS,
   drawer: null,
@@ -120,13 +123,19 @@ export const useStore = create<State>((set, get) => ({
     set({ designers, designersLoaded: true })
   },
   init: async () => {
-    const client = await api()
-    const [designers, me] = await Promise.all([
-      client.designers.list(),
-      session.get() ? client.auth.me().catch(() => null) : Promise.resolve(null),
-    ])
-    set({ designers, designersLoaded: true })
-    get().setAccount(me)
+    set({ loadError: null })
+    try {
+      const client = await api()
+      const [designers, me] = await Promise.all([
+        client.designers.list(),
+        session.get() ? client.auth.me().catch(() => null) : Promise.resolve(null),
+      ])
+      set({ designers, designersLoaded: true })
+      get().setAccount(me)
+    } catch (e) {
+      console.error('[api] initial load failed', e)
+      set({ loadError: e instanceof Error ? e.message : String(e) })
+    }
   },
   toast: (text, tone = 'default') => {
     const id = ++toastSeq

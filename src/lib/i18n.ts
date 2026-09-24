@@ -184,6 +184,10 @@ const en = {
   signOut: 'Sign out',
   resetDemo: 'Reset demo data',
   genericError: 'Something went wrong. Please try again.',
+  loadErrorTitle: 'Couldn’t load designers',
+  loadErrorBody: 'The server didn’t respond as expected. Check the connection and try again.',
+  retry: 'Try again',
+  serverStatus: 'Server status',
   ago: {
     today: 'today',
     days: (n: string) => `${n}d ago`,
@@ -372,6 +376,10 @@ const fa: Dict = {
   signOut: 'خروج',
   resetDemo: 'بازنشانی داده‌های دمو',
   genericError: 'مشکلی پیش آمد. دوباره تلاش کنید.',
+  loadErrorTitle: 'بارگذاری طراحان ممکن نشد',
+  loadErrorBody: 'سرور پاسخ درستی نداد. اتصال را بررسی کنید و دوباره تلاش کنید.',
+  retry: 'تلاش دوباره',
+  serverStatus: 'وضعیت سرور',
   ago: {
     today: 'امروز',
     days: (n) => `${n} روز پیش`,

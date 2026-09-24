@@ -17,7 +17,7 @@ export default function App() {
 
   // Load designers + the signed-in account (if any) from the API.
   useEffect(() => {
-    init().catch((e) => console.error('[api] init failed', e))
+    void init()
   }, [init])
 
   useEffect(() => {
