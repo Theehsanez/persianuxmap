@@ -1,5 +1,7 @@
 name: Deploy demo to GitHub Pages
 
+# GitHub Pages only serves static files, so this publishes the static demo build:
+# the same oRPC contract runs in the browser (src/api/local.ts) instead of the Node server.
 on:
   push:
     branches: [claude/compassionate-ramanujan-v68rco, main]
@@ -24,11 +26,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - run: npm run typecheck
+      - run: npm run build:pages
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+      - run: cp dist/client/index.html dist/client/404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: dist/client
 
   deploy:
     needs: build

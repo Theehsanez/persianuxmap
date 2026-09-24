@@ -6,6 +6,7 @@ import { usePublicDesigners, useStats, useFilteredDesigners, filterCount } from 
 import { skillById } from '../data/taxonomy'
 import { mapApi, getMap } from '../map/mapApi'
 import { useDesigner } from '../lib/data'
+import { call } from '../lib/actions'
 import { Avatar } from './Avatar'
 import { Button, LogoMark, useEscape, useIsMobile } from './ui'
 
@@ -228,8 +229,11 @@ export function ReportDialog() {
             onSubmit={(e) => {
               e.preventDefault()
               if (!reason) return
-              markReported(d.id)
-              setSent(true)
+              void call((api) => api.reports.create({ profileId: d.id, reason, note: note.trim() || undefined })).then((ok) => {
+                if (!ok) return
+                markReported(d.id)
+                setSent(true)
+              })
             }}
           >
             <div className="flex items-center gap-3">
@@ -303,7 +307,7 @@ export function Toasts() {
 
 export function LoadingScreen() {
   const { t } = useT()
-  const ready = useStore((s) => s.mapReady)
+  const ready = useStore((s) => s.mapReady && s.designersLoaded)
   const [gone, setGone] = useState(false)
   useEffect(() => {
     if (ready) {

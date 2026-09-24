@@ -13,6 +13,12 @@ import { DICTS } from './lib/i18n'
 export default function App() {
   const locale = useStore((s) => s.locale)
   const mobile = useIsMobile()
+  const init = useStore((s) => s.init)
+
+  // Load designers + the signed-in account (if any) from the API.
+  useEffect(() => {
+    init().catch((e) => console.error('[api] init failed', e))
+  }, [init])
 
   useEffect(() => {
     const html = document.documentElement

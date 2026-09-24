@@ -183,6 +183,7 @@ const en = {
   signedInAs: (e: string) => `Signed in as ${e}`,
   signOut: 'Sign out',
   resetDemo: 'Reset demo data',
+  genericError: 'Something went wrong. Please try again.',
   ago: {
     today: 'today',
     days: (n: string) => `${n}d ago`,
@@ -370,6 +371,7 @@ const fa: Dict = {
   signedInAs: (e) => `وارد شده با ${e}`,
   signOut: 'خروج',
   resetDemo: 'بازنشانی داده‌های دمو',
+  genericError: 'مشکلی پیش آمد. دوباره تلاش کنید.',
   ago: {
     today: 'امروز',
     days: (n) => `${n} روز پیش`,

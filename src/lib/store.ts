@@ -1,17 +1,14 @@
 import { create } from 'zustand'
 import type { Locale, RoleId, SkillId } from '../data/taxonomy'
-import { DEMO_DESIGNERS, type Designer } from '../data/designers'
+import type { Designer } from '../data/designers'
+import { api, session } from '../api/client'
+import type { Account as ApiAccount } from '../api/contract'
 
 export type Filters = { q: string; roles: RoleId[]; skills: SkillId[]; countries: string[]; cities: string[] }
 export const EMPTY_FILTERS: Filters = { q: '', roles: [], skills: [], countries: [], cities: [] }
 
-export type Account = {
-  email: string
-  provider: 'google' | 'email'
-  emailVerified: boolean
-  hidden: boolean
-  profile: Designer
-}
+/** A signed-in person who has finished onboarding (has a profile). */
+export type Account = Omit<ApiAccount, 'profile'> & { profile: Designer }
 
 export type Drawer = { type: 'designer'; id: string } | { type: 'me'; edit?: boolean } | null
 export type Toast = { id: number; text: string; tone?: 'default' | 'success' }
@@ -19,6 +16,7 @@ export type Toast = { id: number; text: string; tone?: 'default' | 'success' }
 type State = {
   locale: Locale
   designers: Designer[]
+  designersLoaded: boolean
   account: Account | null
   filters: Filters
   drawer: Drawer
@@ -43,8 +41,10 @@ type State = {
   setFilterSheet: (v: boolean) => void
   setReport: (id: string | null) => void
   markReported: (id: string) => void
-  setAccount: (a: Account | null) => void
-  updateAccount: (fn: (a: Account) => Account) => void
+  /** Accepts the API's account shape; people without a profile yet are treated as signed out of the map. */
+  setAccount: (a: ApiAccount | null) => void
+  loadDesigners: () => Promise<void>
+  init: () => Promise<void>
   toast: (text: string, tone?: Toast['tone']) => void
   dismissToast: (id: number) => void
   setPulse: (id: string | null) => void
@@ -77,8 +77,9 @@ let toastSeq = 0
 
 export const useStore = create<State>((set, get) => ({
   locale: initialLocale,
-  designers: DEMO_DESIGNERS,
-  account: LS.get<Account | null>('pux.account', null),
+  designers: [],
+  designersLoaded: false,
+  account: null,
   filters: EMPTY_FILTERS,
   drawer: null,
   exploreOpen: false,
@@ -113,16 +114,19 @@ export const useStore = create<State>((set, get) => ({
     LS.set('pux.reported', reportedIds)
     set({ reportedIds })
   },
-  setAccount: (account) => {
-    LS.set('pux.account', account)
-    set({ account })
+  setAccount: (a) => set({ account: a && a.profile ? { ...a, profile: a.profile } : null }),
+  loadDesigners: async () => {
+    const designers = await (await api()).designers.list()
+    set({ designers, designersLoaded: true })
   },
-  updateAccount: (fn) => {
-    const a = get().account
-    if (!a) return
-    const account = fn(a)
-    LS.set('pux.account', account)
-    set({ account })
+  init: async () => {
+    const client = await api()
+    const [designers, me] = await Promise.all([
+      client.designers.list(),
+      session.get() ? client.auth.me().catch(() => null) : Promise.resolve(null),
+    ])
+    set({ designers, designersLoaded: true })
+    get().setAccount(me)
   },
   toast: (text, tone = 'default') => {
     const id = ++toastSeq
@@ -134,9 +138,13 @@ export const useStore = create<State>((set, get) => ({
   setMapReady: () => set({ mapReady: true }),
 }))
 
-/** Everyone who should appear on the public map: demo designers + me, once verified and visible. */
+/**
+ * Everyone on the public map. The server list already contains me when I'm visible;
+ * my local copy wins so edits show instantly, and it's flagged `isMe`.
+ */
 export function selectPublicDesigners(s: Pick<State, 'designers' | 'account'>): Designer[] {
   const a = s.account
-  if (a && a.emailVerified && !a.hidden) return [...s.designers, { ...a.profile, isMe: true }]
-  return s.designers
+  if (!a) return s.designers
+  const others = s.designers.filter((d) => d.id !== a.profile.id)
+  return a.emailVerified && !a.hidden ? [...others, { ...a.profile, isMe: true }] : others
 }

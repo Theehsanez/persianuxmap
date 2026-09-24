@@ -9,6 +9,8 @@ import { BIO_MAX, CityAutocomplete, LinkFields, PhotoPicker, RolePicker, SkillPi
 import { ProfileContent } from './Profile'
 import { MiniMap } from './MiniMap'
 import { focusDesignerOnMap } from './SearchBox'
+import { api, session } from '../api/client'
+import { applyAccount, call, toProfileInput } from '../lib/actions'
 
 const STEPS = 6
 const isEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.trim())
@@ -81,7 +83,6 @@ export function Onboarding() {
   const { t, n, locale } = useT()
   const open = useStore((s) => s.onboardingOpen)
   const setOpen = useStore((s) => s.setOnboarding)
-  const setAccount = useStore((s) => s.setAccount)
   const clearFilters = useStore((s) => s.clearFilters)
   const toast = useStore((s) => s.toast)
   const setPulse = useStore((s) => s.setPulse)
@@ -129,14 +130,18 @@ export function Onboarding() {
     setTouched(false)
   }, [step])
 
-  const sendCode = () => {
-    const c = String(Math.floor(100000 + Math.random() * 900000))
-    setSentCode(c)
+  const [joining, setJoining] = useState(false)
+
+  const sendCode = async () => {
     setCode('')
     setCodeError(false)
     setInbox(false)
     setCooldown(30)
-    setTimeout(() => setInbox(true), 1200)
+    setSentCode('sending')
+    const r = await call((a) => a.auth.requestCode({ email }))
+    // No mail provider yet: the API hands the code back so the demo inbox can show it.
+    setSentCode(r?.devCode ?? '')
+    if (r?.devCode) setTimeout(() => setInbox(true), 900)
   }
   useEffect(() => {
     if (step === 4 && provider === 'email' && !verified && !sentCode) sendCode()
@@ -148,17 +153,20 @@ export function Onboarding() {
     return () => clearTimeout(id)
   }, [cooldown])
 
-  const tryVerify = (c = code) => {
-    if (c.length < 6) return
+  const tryVerify = async (c = code) => {
+    if (c.length < 6 || verifying) return
     setVerifying(true)
-    setTimeout(() => {
+    try {
+      const { token } = await (await api()).auth.verifyCode({ email, code: c })
+      session.set(token)
+      setVerified(true)
+      setCodeError(false)
+      setTimeout(() => go(5), 700)
+    } catch {
+      setCodeError(true)
+    } finally {
       setVerifying(false)
-      if (c === sentCode) {
-        setVerified(true)
-        setCodeError(false)
-        setTimeout(() => go(5), 700)
-      } else setCodeError(true)
-    }, 600)
+    }
   }
   useEffect(() => {
     if (code.length === 6 && !verified) tryVerify(code)
@@ -190,9 +198,13 @@ export function Onboarding() {
 
   const preview = useMemo(() => designerFromDraft(draft, { verification: 'email' }), [draft])
 
-  const join = () => {
-    const profile = designerFromDraft(draft, { verification: 'email' })
-    setAccount({ email: provider === 'google' ? email || 'you@gmail.com' : email, provider: provider ?? 'email', emailVerified: true, hidden: false, profile })
+  const join = async () => {
+    setJoining(true)
+    const account = await call((a) => a.profile.save(toProfileInput(draft)))
+    setJoining(false)
+    const profile = account?.profile
+    if (!account || !profile) return
+    applyAccount(account)
     setOpen(false)
     clearFilters()
     toast(t.welcomeToast, 'success')
@@ -205,15 +217,16 @@ export function Onboarding() {
 
   if (!open) return null
 
-  const google = () => {
+  const google = async () => {
     setProvider('google')
     setGoogleLoading(true)
-    setTimeout(() => {
-      setGoogleLoading(false)
-      setEmail('you@gmail.com')
-      setVerified(true)
-      go(1)
-    }, 1000)
+    const r = await call((a) => a.auth.google())
+    setGoogleLoading(false)
+    if (!r) return
+    session.set(r.token)
+    setEmail(r.account.email)
+    setVerified(true)
+    go(1)
   }
 
   const body = (() => {
@@ -428,7 +441,7 @@ export function Onboarding() {
               {step === 5 ? t.editDetails : t.back}
             </Button>
             {step === 5 ? (
-              <Button variant="primary" size="lg" onClick={join} icon={<MapPin size={17} />}>
+              <Button variant="primary" size="lg" onClick={join} disabled={joining} icon={joining ? <Loader2 size={17} className="animate-spin" /> : <MapPin size={17} />}>
                 {t.joinMap}
               </Button>
             ) : step === 4 && !verified ? (

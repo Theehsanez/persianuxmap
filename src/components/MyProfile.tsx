@@ -6,16 +6,16 @@ import { useT } from '../lib/i18n'
 import { Avatar } from './Avatar'
 import { ProfileContent } from './Profile'
 import { Button, Field, Toggle, inputCls, VerificationBadge } from './ui'
-import { BIO_MAX, CityAutocomplete, LinkFields, PhotoPicker, RolePicker, SkillPicker, designerFromDraft, draftErrors, draftFromDesigner, type Draft } from './ProfileForm'
+import { BIO_MAX, CityAutocomplete, LinkFields, PhotoPicker, RolePicker, SkillPicker, draftErrors, draftFromDesigner, type Draft } from './ProfileForm'
 import { focusDesignerOnMap } from './SearchBox'
+import { applyAccount, call, signOutEverywhere, toProfileInput } from '../lib/actions'
+import { session } from '../api/client'
 
 export function MyProfile() {
   const { t } = useT()
   const account = useStore((s) => s.account)
   const drawer = useStore((s) => s.drawer)
   const openMe = useStore((s) => s.openMe)
-  const update = useStore((s) => s.updateAccount)
-  const setAccount = useStore((s) => s.setAccount)
   const close = useStore((s) => s.closeDrawer)
   const toast = useStore((s) => s.toast)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -55,8 +55,10 @@ export function MyProfile() {
         <Toggle
           label={t.visibility}
           checked={!account.hidden}
-          onChange={(v) => {
-            update((a) => ({ ...a, hidden: !v }))
+          onChange={async (v) => {
+            const a = await call((api) => api.profile.setHidden({ hidden: !v }))
+            if (!a) return
+            applyAccount(a)
             toast(v ? t.shownToast : t.hiddenToast)
           }}
         />
@@ -76,7 +78,7 @@ export function MyProfile() {
           ))}
         </ul>
         {p.verification === 'email' && (
-          <Button size="sm" variant="secondary" className="mt-4 w-full" onClick={() => update((a) => ({ ...a, profile: { ...a.profile, verification: 'pending' } }))}>
+          <Button size="sm" variant="secondary" className="mt-4 w-full" onClick={async () => applyAccount((await call((api) => api.profile.requestReview())) ?? account)}>
             {t.requestVerification}
           </Button>
         )}
@@ -85,7 +87,7 @@ export function MyProfile() {
             <p className="text-[12px] leading-relaxed text-subtle">{t.pendingNote}</p>
             <button
               className="self-start text-[12px] text-accent underline-offset-4 hover:underline"
-              onClick={() => update((a) => ({ ...a, profile: { ...a.profile, verification: 'verified' } }))}
+              onClick={async () => applyAccount((await call((api) => api.profile.approveDemo())) ?? account)}
             >
               {t.simulateApproval}
             </button>
@@ -121,8 +123,10 @@ export function MyProfile() {
               size="sm"
               variant="danger"
               icon={<Trash2 size={14} />}
-              onClick={() => {
-                setAccount(null)
+              onClick={async () => {
+                if (!(await call((api) => api.profile.remove()))) return
+                session.set(null)
+                applyAccount(null)
                 close()
                 toast(t.deletedToast)
               }}
@@ -143,8 +147,8 @@ export function MyProfile() {
         <span>{t.signedInAs('')}<span className="latin" dir="ltr">{account.email}</span></span>
         <button
           className="flex items-center gap-1.5 hover:text-text"
-          onClick={() => {
-            setAccount(null)
+          onClick={async () => {
+            await signOutEverywhere()
             close()
           }}
         >
@@ -159,8 +163,8 @@ export function MyProfile() {
 function EditProfile() {
   const { t, n } = useT()
   const account = useStore((s) => s.account)!
-  const update = useStore((s) => s.updateAccount)
   const openMe = useStore((s) => s.openMe)
+  const [saving, setSaving] = useState(false)
   const toast = useStore((s) => s.toast)
   const [draft, setDraft] = useState<Draft>(() => draftFromDesigner(account.profile))
   const [touched, setTouched] = useState(false)
@@ -168,11 +172,15 @@ function EditProfile() {
   const errs = draftErrors(draft)
   const invalid = Object.values(errs).some(Boolean)
 
-  const save = () => {
+  const save = async () => {
     setTouched(true)
     if (invalid) return
     const cityChanged = draft.cityId !== account.profile.cityId
-    update((a) => ({ ...a, profile: designerFromDraft(draft, a.profile) }))
+    setSaving(true)
+    const a = await call((api) => api.profile.save(toProfileInput(draft)))
+    setSaving(false)
+    if (!a) return
+    applyAccount(a)
     openMe(false)
     toast(cityChanged ? t.cityChangedToast : t.saved, 'success')
     if (cityChanged && !account.hidden) setTimeout(() => focusDesignerOnMap(account.profile.id), 100)
@@ -211,7 +219,7 @@ function EditProfile() {
         <Button variant="ghost" onClick={() => openMe(false)}>
           {t.cancel}
         </Button>
-        <Button variant="primary" className="flex-1" onClick={save}>
+        <Button variant="primary" className="flex-1" onClick={save} disabled={saving}>
           {t.saveChanges}
         </Button>
       </div>
