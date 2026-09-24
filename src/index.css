@@ -102,6 +102,7 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 }
 .markers { pointer-events: none; }
 .markers > * { pointer-events: auto; position: absolute; left: 0; top: 0; will-change: transform, opacity; }
+.markers > .neural { pointer-events: none; width: 100%; height: 100%; will-change: auto; }
 
 .marker-cluster {
   display: grid;

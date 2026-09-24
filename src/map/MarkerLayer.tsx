@@ -8,6 +8,7 @@ import { useStore } from '../lib/store'
 import { Avatar } from '../components/Avatar'
 import { useT } from '../lib/i18n'
 import { BadgeCheck } from 'lucide-react'
+import { NeuralLayer, type NeuralFrame } from './NeuralLayer'
 
 const hash = (s: string) => [...s].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7)
 
@@ -33,6 +34,7 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
   const avatarRefs = useRef(new Map<string, HTMLElement>())
   const clusterRefs = useRef(new Map<string, HTMLElement>())
   const areaRefs = useRef(new Map<string, HTMLElement>())
+  const frame = useRef<NeuralFrame | null>(null)
 
   const update = useCallback(() => {
     const z = map.getZoom()
@@ -59,6 +61,13 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
       sig.current = nextSig
       setClusters(out.map((c) => ({ key: c.key, groups: c.groups, count: c.count })))
     }
+    const nf: NeuralFrame = { cityAnchor: new Map(), cityT: new Map(), people: new Map(), w: W, h: H }
+    for (const c of out) for (const g of c.groups) nf.cityAnchor.set(g.city.id, { x: c.x, y: c.y, cluster: c.key })
+    for (const x of per) {
+      nf.cityT.set(x.g.city.id, x.t)
+      if (x.t >= 1) nf.cityAnchor.set(x.g.city.id, { x: x.p.x, y: x.p.y, cluster: x.g.city.id })
+    }
+    frame.current = nf
     for (const c of out) {
       const el = clusterRefs.current.get(c.key)
       if (!el) continue
@@ -105,6 +114,7 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
         const px = x.p.x + (q.x - x.p.x) * x.t
         const py = x.p.y + (q.y - x.p.y) * x.t
         const off = px < -40 || px > W + 40 || py < -40 || py > H + 40
+        nf.people.set(d.id, { x: px, y: py })
         el.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -50%) scale(${0.6 + 0.4 * x.t})`
         el.style.opacity = String(Math.min(1, x.t * 1.5))
         el.style.visibility = off ? 'hidden' : 'visible'
@@ -137,6 +147,7 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
 
   return (
     <div className={`markers absolute inset-0 overflow-hidden transition-opacity duration-700 ${mapReady ? 'opacity-100' : 'opacity-0'}`} aria-hidden={false}>
+      <NeuralLayer frame={frame} groups={groups} scatters={scatters} selectedId={selectedId} />
       {groups.map((g) => (
         <div
           key={'area-' + g.city.id}

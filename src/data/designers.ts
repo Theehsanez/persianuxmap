@@ -220,6 +220,19 @@ const FEATURED: Featured[] = [
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z]+/g, '-')
 
+const FEMALE = new Set('Sara Niloofar Mahsa Negar Shirin Yasaman Leila Ghazal Mina Roya Tara Elham Setareh Nazanin Parisa Azadeh Hoda Shadi Bahar Donya Maryam Samira Atena Sepideh Golnaz Mahtab Nasim Fatemeh Ladan Yalda Ava Kimia Taraneh Zahra Rozhin'.split(' '))
+
+/**
+ * Demo portraits from randomuser.me (free placeholder photos, 100 per gender).
+ * Handed out round-robin so neighbours rarely share a face. If they can't load, <Avatar> falls back to initials.
+ */
+const photoCounter = { women: 0, men: 0 }
+function demoPhoto(first: string) {
+  const g = FEMALE.has(first) ? 'women' : 'men'
+  const i = (photoCounter[g]++ * 37) % 100 // stride so consecutive people get visually different faces
+  return `https://randomuser.me/api/portraits/${g}/${i}.jpg`
+}
+
 function roleTitle(role: RoleId, sen: number): L10n {
   const r = ROLES.find((x) => x.id === role)!
   const s = SENIORITY[sen]
@@ -260,7 +273,7 @@ function generate(): Designer[] {
       links: f.links ?? makeLinks(f.first, f.last, i),
       joined: new Date(now - (300 + i * 23) * DAY).toISOString(),
       verification: f.verification ?? 'email',
-      avatar: { hue: Math.floor(rnd() * 360) },
+      avatar: { hue: Math.floor(rnd() * 360), photo: demoPhoto(f.first) },
     })
   })
 
@@ -301,7 +314,7 @@ function generate(): Designer[] {
         links: makeLinks(first[0], last[0], n),
         joined: new Date(now - age * DAY - Math.floor(rnd() * DAY)).toISOString(),
         verification: rnd() < 0.45 ? 'verified' : 'email',
-        avatar: { hue: Math.floor(rnd() * 360) },
+        avatar: { hue: Math.floor(rnd() * 360), photo: demoPhoto(first[0]) },
       })
     }
   }
