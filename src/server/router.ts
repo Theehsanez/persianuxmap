@@ -29,8 +29,8 @@ const toDesigner = (p: ProfileRow): Designer => ({
   avatar: { hue: p.hue, photo: p.photo ?? undefined },
 })
 
-function accountOf(user: UserRow): Account {
-  const p = getDb().select().from(profiles).where(eq(profiles.userId, user.id)).get()
+async function accountOf(user: UserRow): Promise<Account> {
+  const p = await (await getDb()).select().from(profiles).where(eq(profiles.userId, user.id)).get()
   return {
     email: user.email,
     provider: user.provider === 'google' ? 'google' : 'email',
@@ -40,34 +40,34 @@ function accountOf(user: UserRow): Account {
   }
 }
 
-function currentUser(headers: Headers): UserRow | null {
+async function currentUser(headers: Headers): Promise<UserRow | null> {
   const token = headers.get('authorization')?.replace(/^Bearer\s+/i, '')
   if (!token) return null
-  const row = getDb().select({ user: users }).from(sessions).innerJoin(users, eq(sessions.userId, users.id)).where(eq(sessions.token, token)).get()
+  const row = await (await getDb()).select({ user: users }).from(sessions).innerJoin(users, eq(sessions.userId, users.id)).where(eq(sessions.token, token)).get()
   return row?.user ?? null
 }
 
 /** Procedures below require a signed-in person with a confirmed email. */
-const authed = os.middleware(({ context, next }) => {
-  const user = currentUser(context.headers)
+const authed = os.middleware(async ({ context, next }) => {
+  const user = await currentUser(context.headers)
   if (!user) throw new ORPCError('UNAUTHORIZED')
   if (!user.emailVerified) throw new ORPCError('FORBIDDEN', { message: 'Email not verified' })
   return next({ context: { user } })
 })
 
-function openSession(email: string, provider: 'google' | 'email') {
-  const db = getDb()
-  let user = db.select().from(users).where(eq(users.email, email)).get()
+async function openSession(email: string, provider: 'google' | 'email') {
+  const db = await getDb()
+  let user = await db.select().from(users).where(eq(users.email, email)).get()
   if (!user) {
     user = { id: randomUUID(), email, provider, emailVerified: true, createdAt: new Date() }
-    db.insert(users).values(user).run()
+    await db.insert(users).values(user)
   } else if (!user.emailVerified) {
-    db.update(users).set({ emailVerified: true }).where(eq(users.id, user.id)).run()
+    await db.update(users).set({ emailVerified: true }).where(eq(users.id, user.id))
     user = { ...user, emailVerified: true }
   }
   const token = randomBytes(32).toString('base64url')
-  db.insert(sessions).values({ token, userId: user.id, createdAt: new Date() }).run()
-  return { token, account: accountOf(user) }
+  await db.insert(sessions).values({ token, userId: user.id, createdAt: new Date() })
+  return { token, account: await accountOf(user) }
 }
 
 const CODE_TTL = 10 * 60 * 1000
@@ -77,59 +77,57 @@ const exposeCodes = process.env.EXPOSE_EMAIL_CODES !== 'false'
 
 export const router = os.router({
   designers: {
-    list: os.designers.list.handler(() => {
-      const rows = getDb()
+    list: os.designers.list.handler(async () => {
+      const rows = await (await getDb())
         .select({ p: profiles })
         .from(profiles)
         .innerJoin(users, eq(profiles.userId, users.id))
         .where(and(eq(profiles.hidden, false), eq(users.emailVerified, true)))
-        .all()
       return rows.map((r) => toDesigner(r.p))
     }),
   },
 
   auth: {
-    requestCode: os.auth.requestCode.handler(({ input }) => {
+    requestCode: os.auth.requestCode.handler(async ({ input }) => {
       const email = input.email.toLowerCase()
       const code = randomCode()
-      getDb()
+      await (await getDb())
         .insert(emailCodes)
         .values({ email, code, expiresAt: new Date(Date.now() + CODE_TTL), attempts: 0 })
         .onConflictDoUpdate({ target: emailCodes.email, set: { code, expiresAt: new Date(Date.now() + CODE_TTL), attempts: 0 } })
-        .run()
       // TODO: send `code` by email once a mail provider is configured.
       return { sent: true as const, devCode: exposeCodes ? code : undefined }
     }),
-    verifyCode: os.auth.verifyCode.handler(({ input }) => {
-      const db = getDb()
+    verifyCode: os.auth.verifyCode.handler(async ({ input }) => {
+      const db = await getDb()
       const email = input.email.toLowerCase()
-      const row = db.select().from(emailCodes).where(eq(emailCodes.email, email)).get()
+      const row = await db.select().from(emailCodes).where(eq(emailCodes.email, email)).get()
       if (!row || row.expiresAt.getTime() < Date.now() || row.attempts >= MAX_ATTEMPTS) throw new ORPCError('BAD_REQUEST', { message: 'Code expired' })
       if (row.code !== input.code) {
-        db.update(emailCodes).set({ attempts: row.attempts + 1 }).where(eq(emailCodes.email, email)).run()
+        await db.update(emailCodes).set({ attempts: row.attempts + 1 }).where(eq(emailCodes.email, email))
         throw new ORPCError('BAD_REQUEST', { message: 'Wrong code' })
       }
-      db.delete(emailCodes).where(eq(emailCodes.email, email)).run()
+      await db.delete(emailCodes).where(eq(emailCodes.email, email))
       return openSession(email, 'email')
     }),
     google: os.auth.google.handler(() => openSession('you@gmail.com', 'google')),
-    me: os.auth.me.handler(({ context }) => {
-      const user = currentUser(context.headers)
+    me: os.auth.me.handler(async ({ context }) => {
+      const user = await currentUser(context.headers)
       return user ? accountOf(user) : null
     }),
-    signOut: os.auth.signOut.handler(({ context }) => {
+    signOut: os.auth.signOut.handler(async ({ context }) => {
       const token = context.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
-      if (token) getDb().delete(sessions).where(eq(sessions.token, token)).run()
+      if (token) await (await getDb()).delete(sessions).where(eq(sessions.token, token))
       return { ok: true as const }
     }),
   },
 
   profile: {
-    save: os.profile.save.use(authed).handler(({ input, context }) => {
+    save: os.profile.save.use(authed).handler(async ({ input, context }) => {
       const city = cityById[input.cityId]
       if (!city) throw new ORPCError('BAD_REQUEST', { message: 'Unknown city' })
-      const db = getDb()
-      const existing = db.select().from(profiles).where(eq(profiles.userId, context.user.id)).get()
+      const db = await getDb()
+      const existing = await db.select().from(profiles).where(eq(profiles.userId, context.user.id)).get()
       const d = designerFromInput(input, {
         id: existing?.id ?? randomUUID(),
         joined: (existing?.joinedAt ?? new Date()).toISOString(),
@@ -152,44 +150,43 @@ export const router = os.router({
         photo: d.avatar.photo ?? null,
         hue: d.avatar.hue,
       }
-      if (existing) db.update(profiles).set(values).where(eq(profiles.id, existing.id)).run()
-      else db.insert(profiles).values({ ...values, id: d.id, userId: context.user.id, joinedAt: new Date(), verification: 'email', hidden: false }).run()
+      if (existing) await db.update(profiles).set(values).where(eq(profiles.id, existing.id))
+      else await db.insert(profiles).values({ ...values, id: d.id, userId: context.user.id, joinedAt: new Date(), verification: 'email', hidden: false })
       return accountOf(context.user)
     }),
-    setHidden: os.profile.setHidden.use(authed).handler(({ input, context }) => {
-      getDb().update(profiles).set({ hidden: input.hidden }).where(eq(profiles.userId, context.user.id)).run()
+    setHidden: os.profile.setHidden.use(authed).handler(async ({ input, context }) => {
+      await (await getDb()).update(profiles).set({ hidden: input.hidden }).where(eq(profiles.userId, context.user.id))
       return accountOf(context.user)
     }),
-    requestReview: os.profile.requestReview.use(authed).handler(({ context }) => {
-      getDb()
+    requestReview: os.profile.requestReview.use(authed).handler(async ({ context }) => {
+      await (await getDb())
         .update(profiles)
         .set({ verification: 'pending' })
         .where(and(eq(profiles.userId, context.user.id), eq(profiles.verification, 'email')))
-        .run()
       return accountOf(context.user)
     }),
-    approveDemo: os.profile.approveDemo.use(authed).handler(({ context }) => {
-      getDb()
+    approveDemo: os.profile.approveDemo.use(authed).handler(async ({ context }) => {
+      await (await getDb())
         .update(profiles)
         .set({ verification: 'verified' })
         .where(and(eq(profiles.userId, context.user.id), eq(profiles.verification, 'pending')))
-        .run()
       return accountOf(context.user)
     }),
-    remove: os.profile.remove.use(authed).handler(({ context }) => {
+    remove: os.profile.remove.use(authed).handler(async ({ context }) => {
       // Deleting the user cascades to their profile, sessions and reports about them.
-      getDb().delete(users).where(eq(users.id, context.user.id)).run()
+      await (await getDb()).delete(users).where(eq(users.id, context.user.id))
       return { ok: true as const }
     }),
   },
 
   reports: {
-    create: os.reports.create.handler(({ input, context }) => {
-      const db = getDb()
-      if (!db.select({ id: profiles.id }).from(profiles).where(eq(profiles.id, input.profileId)).get()) throw new ORPCError('NOT_FOUND')
-      db.insert(reports)
-        .values({ id: randomUUID(), profileId: input.profileId, reporterUserId: currentUser(context.headers)?.id ?? null, reason: input.reason, note: input.note ?? null, createdAt: new Date() })
-        .run()
+    create: os.reports.create.handler(async ({ input, context }) => {
+      const db = await getDb()
+      if (!(await db.select({ id: profiles.id }).from(profiles).where(eq(profiles.id, input.profileId)).get())) throw new ORPCError('NOT_FOUND')
+      const reporter = await currentUser(context.headers)
+      await db
+        .insert(reports)
+        .values({ id: randomUUID(), profileId: input.profileId, reporterUserId: reporter?.id ?? null, reason: input.reason, note: input.note ?? null, createdAt: new Date() })
       return { ok: true as const }
     }),
   },

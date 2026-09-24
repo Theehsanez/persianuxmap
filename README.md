@@ -7,8 +7,8 @@ A map-first, working front-end demo for discovering Persian-speaking UI, UX and 
 ```bash
 npm install
 npm run dev      # http://localhost:5173  — app + API, SQLite at ./data/persianuxmap.db
-npm run build    # type-check + production build
-npm start        # production Node server (http://localhost:3000)
+npm run build    # type-check + production build (Nitro)
+npm start        # production Node server: node .output/server/index.mjs (http://localhost:3000)
 ```
 
 On first start the database is created, migrated and seeded with ~236 demo designers. No API keys are needed.
@@ -20,19 +20,20 @@ On first start the database is created, migrated and seeded with ~236 demo desig
 | Framework | **TanStack Start** (React 19, file routes in `src/routes`) |
 | API | **oRPC**, contract-first: `src/api/contract.ts` (zod) |
 | Server | `src/server/router.ts` implements the contract, served at `/api/rpc/*` (`src/routes/api/rpc.$.ts`) |
-| Database | **Drizzle ORM + SQLite** (better-sqlite3). Schema `src/server/db/schema.ts`, migrations in `drizzle/` |
+| Database | **Drizzle ORM + SQLite** via libSQL: a local file in development, [Turso](https://turso.tech) in production. Schema `src/server/db/schema.ts`, migrations in `drizzle/` |
+| Hosting | **Nitro**: a Node server locally; Vercel functions automatically when built on Vercel |
 | UI | Tailwind CSS v4, MapLibre GL, Lucide, Zustand |
 
 **Data model:** `users`, `profiles` (location is only a city id + country code), `sessions` (bearer tokens), `email_codes` (6-digit, 10 min, 5 attempts), `reports`.
 
-**Schema changes:** edit `schema.ts`, then run `npm run db:generate`. Migrations run automatically on server start. Use `npm run db:studio` to browse the data.
+**Schema changes:** edit `schema.ts`, then run `npm run db:generate`. The generated SQL is bundled into the server and applied automatically on the first request (tracked in `__migrations`), so no migration step is needed at deploy time. Use `npm run db:studio` to browse the data.
 
 **Environment variables:**
 
 | Variable | Default | |
 |---|---|---|
-| `DATABASE_URL` | `./data/persianuxmap.db` | SQLite file path |
-| `MIGRATIONS_DIR` | `./drizzle` | |
+| `DATABASE_URL` | `file:./data/persianuxmap.db` | `file:` path locally, or `libsql://…` for Turso |
+| `DATABASE_AUTH_TOKEN` | — | Turso database token |
 | `EXPOSE_EMAIL_CODES` | `true` | No mail provider is wired up yet, so the API returns the code and the "demo inbox" shows it. Set this to `false` once real email is sending. |
 | `PORT` | `3000` | used by `npm start` |
 
@@ -42,7 +43,16 @@ On first start the database is created, migrated and seeded with ~236 demo desig
 
 GitHub Pages can't run a server. `npm run build:pages` (`VITE_STATIC_DEMO=1`) builds a static SPA in which `src/api/local.ts` implements **the same oRPC contract in the browser**: demo designers are generated locally and your account lives in `localStorage`. The UI only talks to the contract, so it works the same in both modes. `.github/workflows/pages.yml` deploys this on every push.
 
-For the real backend, deploy the Node server (`npm run build && npm start`) to any host with a persistent disk for the SQLite file, such as a VPS, Fly.io or Railway.
+### Deploy to Vercel
+
+Vercel functions don't keep files, so production uses a hosted SQLite database on Turso (free tier).
+
+1. **Create the database:** go to [turso.tech](https://turso.tech) → Create Database. Copy its URL (`libsql://…`) and create a token (Databases → your database → Create Token).
+2. **Import the repo:** in Vercel, Add New → Project → import `persianuxmap`. The settings come from `vercel.json`, so leave them as they are.
+3. **Environment variables:** add `DATABASE_URL` = the `libsql://…` URL and `DATABASE_AUTH_TOKEN` = the token.
+4. **Deploy.** On the first request the server creates the tables and seeds the demo designers.
+
+Any Node host also works: `npm run build && npm start`, with a persistent `file:` database or Turso.
 
 ## Things to try
 
