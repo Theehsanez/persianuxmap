@@ -193,7 +193,7 @@ function EditProfile() {
       </div>
       <div className="flex flex-col gap-5 px-6 pt-5 pb-6">
         <Field label={t.photo}>
-          <PhotoPicker draft={draft} set={set} />
+          <PhotoPicker draft={draft} set={set} email={account.email} />
         </Field>
         <Field label={t.fullName} htmlFor="e-name" error={touched && errs.name && t.required}>
           <input id="e-name" value={draft.name} onChange={(e) => set({ name: e.target.value })} className={inputCls} />

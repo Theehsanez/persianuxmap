@@ -9,6 +9,7 @@ import { Onboarding } from './components/Onboarding'
 import { EmptyMapState, LoadingScreen, MapControls, ReportDialog, StatsCard, Toasts, ZoomHint } from './components/Overlays'
 import { useIsMobile } from './components/ui'
 import { DICTS } from './lib/i18n'
+import { focusDesignerOnMap } from './components/SearchBox'
 
 export default function App() {
   const locale = useStore((s) => s.locale)
@@ -19,6 +20,15 @@ export default function App() {
   useEffect(() => {
     void init()
   }, [init])
+
+  // Shared profile link (?d=<id>): once the map and data are ready, fly to that person and open them.
+  const ready = useStore((s) => s.mapReady && s.designersLoaded)
+  useEffect(() => {
+    if (!ready) return
+    const id = new URLSearchParams(window.location.search).get('d')
+    const s = useStore.getState()
+    if (id && (s.designers.some((d) => d.id === id) || s.account?.profile.id === id)) setTimeout(() => focusDesignerOnMap(id), 600)
+  }, [ready])
 
   useEffect(() => {
     const html = document.documentElement

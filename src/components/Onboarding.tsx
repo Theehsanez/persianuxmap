@@ -13,6 +13,9 @@ import { api, session } from '../api/client'
 import { applyAccount, call, toProfileInput } from '../lib/actions'
 
 const STEPS = 6
+
+/** Unfinished onboarding survives closing the dialog (same tab), so an accidental click doesn't lose the form. */
+let savedDraft: { step: number; draft: Draft; provider: 'google' | 'email' | null; email: string; verified: boolean } | null = null
 const isEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.trim())
 
 function GoogleIcon() {
@@ -107,11 +110,31 @@ export function Onboarding() {
   const errs = draftErrors(draft)
   const scroller = useRef<HTMLDivElement>(null)
 
-  const close = () => setOpen(false)
+  const mode = useStore((s) => s.onboardingMode)
+  const sessionEmail = useStore((s) => s.sessionEmail)
+  const openMe = useStore((s) => s.openMe)
+  const close = () => {
+    if (mode === 'join' && step > 0 && step < 5) savedDraft = { step, draft, provider, email, verified }
+    setOpen(false)
+  }
   useEscape(close, open)
 
   const prefill = useStore((s) => s.onboardingPrefill)
   const googleOAuth = useStore((s) => s.authConfig.googleOAuth)
+
+  /** After sign-in: members with a profile go straight to it; everyone else continues onboarding. */
+  const afterSignIn = async (fallbackStep: number) => {
+    const me = await call((a) => a.auth.me())
+    if (me?.profile) {
+      savedDraft = null
+      applyAccount(me)
+      setOpen(false)
+      toast(t.welcomeBack, 'success')
+      openMe()
+      return
+    }
+    go(fallbackStep)
+  }
 
   // Reset when reopened — or continue after returning from Google with name/photo filled in.
   useEffect(() => {
@@ -127,6 +150,24 @@ export function Onboarding() {
       setDraft({ ...emptyDraft(), name: prefill.name ?? '', photo: prefill.photo })
       setStep(1)
       useStore.setState({ onboardingPrefill: null })
+      return
+    }
+    if (mode === 'join' && savedDraft) {
+      setStep(savedDraft.step)
+      setDraft(savedDraft.draft)
+      setProvider(savedDraft.provider)
+      setEmail(savedDraft.email)
+      setVerified(savedDraft.verified)
+      toast(t.draftRestored)
+      return
+    }
+    if (mode === 'join' && sessionEmail) {
+      // Already signed in with a confirmed email but no profile yet.
+      setProvider('email')
+      setEmail(sessionEmail)
+      setVerified(true)
+      setDraft(emptyDraft())
+      setStep(1)
       return
     }
     setStep(0)
@@ -156,7 +197,7 @@ export function Onboarding() {
     if (r?.devCode) setTimeout(() => setInbox(true), 900)
   }
   useEffect(() => {
-    if (step === 4 && provider === 'email' && !verified && !sentCode) sendCode()
+    if (step === 4 && provider === 'email' && !verified && (!sentCode || sentCode === 'sending')) sendCode()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step])
   useEffect(() => {
@@ -173,7 +214,7 @@ export function Onboarding() {
       session.set(token)
       setVerified(true)
       setCodeError(false)
-      setTimeout(() => go(5), 700)
+      setTimeout(() => void afterSignIn(mode === 'signin' ? 1 : 5), 700)
     } catch {
       setCodeError(true)
     } finally {
@@ -216,6 +257,7 @@ export function Onboarding() {
     setJoining(false)
     const profile = account?.profile
     if (!account || !profile) return
+    savedDraft = null
     applyAccount(account)
     setOpen(false)
     clearFilters()
@@ -243,7 +285,7 @@ export function Onboarding() {
     session.set(r.token)
     setEmail(r.account.email)
     setVerified(true)
-    go(1)
+    await afterSignIn(1)
   }
 
   const body = (() => {
@@ -251,7 +293,7 @@ export function Onboarding() {
       case 0:
         return (
           <div className="flex flex-col gap-6">
-            <Heading title={t.s1Title} body={t.s1Body} />
+            <Heading title={mode === 'signin' ? t.signInTitle : t.s1Title} body={mode === 'signin' ? t.signInBody : t.s1Body} />
             <div className="flex flex-col gap-3">
               <Button size="lg" variant="outline" className="w-full !bg-white !text-[#1f1f1f] hover:!bg-white/90" onClick={google} disabled={googleLoading}>
                 {googleLoading ? <Loader2 size={18} className="animate-spin" /> : <GoogleIcon />}
@@ -271,7 +313,8 @@ export function Onboarding() {
                   if (isEmail(email)) {
                     setVerified(false)
                     setSentCode('')
-                    go(1)
+                    // Returning members verify right away; new people fill in their profile first.
+                    go(mode === 'signin' ? 4 : 1)
                   }
                 }}
               >
@@ -293,6 +336,12 @@ export function Onboarding() {
                 </Button>
               </form>
               <p className="text-center text-xs leading-relaxed text-subtle">{t.termsNote}</p>
+              <p className="text-center text-[13px] text-muted">
+                {mode === 'signin' ? t.noAccountYet : t.haveAccount}{' '}
+                <button type="button" className="font-medium text-text underline-offset-4 hover:underline" onClick={() => useStore.setState({ onboardingMode: mode === 'signin' ? 'join' : 'signin' })}>
+                  {mode === 'signin' ? t.joinInstead : t.signIn}
+                </button>
+              </p>
             </div>
           </div>
         )
@@ -301,7 +350,7 @@ export function Onboarding() {
           <div className="flex flex-col gap-6">
             <Heading title={t.s2Title} body={t.s2Body} />
             <Field label={t.photo}>
-              <PhotoPicker draft={draft} set={set} />
+              <PhotoPicker draft={draft} set={set} email={isEmail(email) ? email : undefined} />
             </Field>
             <Field label={t.fullName} htmlFor="name" error={touched && errs.name && t.required}>
               <input id="name" autoComplete="name" value={draft.name} onChange={(e) => set({ name: e.target.value })} placeholder={t.fullNamePlaceholder} className={inputCls} />
@@ -346,7 +395,7 @@ export function Onboarding() {
         return (
           <div className="flex flex-col gap-6">
             <div className="grid size-14 place-items-center rounded-2xl bg-accent-soft text-accent">{verified ? <MailCheck size={26} /> : <Mail size={26} />}</div>
-            <Heading title={t.s5Title} body={provider === 'google' ? t.s5Google : t.s5Body(email)} />
+            <Heading title={t.s5Title} body={provider === 'google' ? t.s5Google : mode === 'signin' ? t.s5SignIn(email) : t.s5Body(email)} />
             {provider === 'google' || verified ? (
               <div className="animate-pop flex items-center gap-3 rounded-2xl border border-accent/30 bg-accent-soft px-4 py-3.5 text-[14px] text-accent-strong">
                 <Check size={18} strokeWidth={2.6} />
@@ -386,10 +435,12 @@ export function Onboarding() {
                 )}
               </>
             )}
-            <p className="flex items-center gap-2 text-xs text-subtle">
-              <EyeOff size={14} />
-              {t.hiddenUntil}
-            </p>
+            {mode === 'join' && (
+              <p className="flex items-center gap-2 text-xs text-subtle">
+                <EyeOff size={14} />
+                {t.hiddenUntil}
+              </p>
+            )}
           </div>
         )
       default: {
@@ -430,7 +481,7 @@ export function Onboarding() {
         {/* header */}
         <div className="flex shrink-0 items-center gap-4 px-5 pt-[max(env(safe-area-inset-top),16px)] pb-3 md:px-7 md:pt-5">
           <Logo size={26} withText={!mobile} />
-          <div className="flex flex-1 items-center gap-1.5" aria-label={t.step(n(step + 1), n(STEPS))}>
+          <div className={`flex flex-1 items-center gap-1.5 ${mode === 'signin' && (step === 0 || step === 4) ? 'invisible' : ''}`} aria-label={t.step(n(step + 1), n(STEPS))}>
             {Array.from({ length: STEPS }).map((_, i) => (
               <span key={i} className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.08]">
                 <span className="block h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: i < step ? '100%' : i === step ? '50%' : '0%' }} />
@@ -439,7 +490,7 @@ export function Onboarding() {
           </div>
           <CloseButton onClick={close} />
         </div>
-        <div className="flex shrink-0 items-center justify-between px-5 pb-1 text-[12px] text-subtle md:px-7">
+        <div className={`flex shrink-0 items-center justify-between px-5 pb-1 text-[12px] text-subtle md:px-7 ${mode === 'signin' && (step === 0 || step === 4) ? 'invisible' : ''}`}>
           <span>{t.step(n(step + 1), n(STEPS))}</span>
           <span className="font-medium text-muted">{t.stepNames[step]}</span>
         </div>
@@ -454,7 +505,7 @@ export function Onboarding() {
         {/* footer */}
         {step > 0 && (
           <div className="flex shrink-0 items-center justify-between gap-3 border-t border-line px-5 pt-3 pb-[max(env(safe-area-inset-bottom),14px)] md:px-7 md:pb-4">
-            <Button variant="ghost" onClick={() => go(step === 5 ? 1 : step - 1)} icon={<ArrowLeft size={16} className="rtl:-scale-x-100" />}>
+            <Button variant="ghost" onClick={() => go(step === 5 ? 1 : mode === 'signin' && step === 4 ? 0 : step - 1)} icon={<ArrowLeft size={16} className="rtl:-scale-x-100" />}>
               {step === 5 ? t.editDetails : t.back}
             </Button>
             {step === 5 ? (

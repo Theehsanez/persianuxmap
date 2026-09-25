@@ -13,7 +13,7 @@ function useAddOrProfile() {
   const account = useStore((s) => s.account)
   const setOnboarding = useStore((s) => s.setOnboarding)
   const openMe = useStore((s) => s.openMe)
-  return () => (account ? openMe() : setOnboarding(true))
+  return (mode: 'join' | 'signin' = 'join') => (account ? openMe() : setOnboarding(true, mode))
 }
 
 function LangButton({ compact }: { compact?: boolean }) {
@@ -38,7 +38,7 @@ function MeButton({ size = 32 }: { size?: number }) {
   const account = useStore((s) => s.account)
   const go = useAddOrProfile()
   return (
-    <button type="button" onClick={go} aria-label={t.myProfile} title={t.myProfile} className="relative rounded-full ring-1 ring-line-strong transition hover:ring-accent/60">
+    <button type="button" onClick={() => go('signin')} aria-label={account ? t.myProfile : t.signIn} title={account ? t.myProfile : t.signIn} className="relative rounded-full ring-1 ring-line-strong transition hover:ring-accent/60">
       {account ? (
         <>
           <Avatar d={account.profile} size={size} />
@@ -75,9 +75,14 @@ export function DesktopTopBar() {
             {t.explore}
           </Button>
           {!account && (
-            <Button variant="primary" size="sm" className="!h-9" icon={<MapPinPlus size={16} />} onClick={() => setOnboarding(true)}>
-              {t.addYourself}
-            </Button>
+            <>
+              <Button variant="ghost" size="sm" className="!h-9" onClick={() => setOnboarding(true, 'signin')}>
+                {t.signIn}
+              </Button>
+              <Button variant="primary" size="sm" className="!h-9" icon={<MapPinPlus size={16} />} onClick={() => setOnboarding(true)}>
+                {t.addYourself}
+              </Button>
+            </>
           )}
           <LangButton />
           <span className="mx-1 h-6 w-px bg-line" />
@@ -175,7 +180,7 @@ export function MobileDock() {
           <Compass size={19} />
           {t.explore}
         </button>
-        <Button variant="primary" className="!h-11 flex-1 !rounded-[14px]" icon={account ? undefined : <MapPinPlus size={18} />} onClick={go}>
+        <Button variant="primary" className="!h-11 flex-1 !rounded-[14px]" icon={account ? undefined : <MapPinPlus size={18} />} onClick={() => go()}>
           {account ? t.myProfile : t.addYourself}
         </Button>
         <LangButton compact />

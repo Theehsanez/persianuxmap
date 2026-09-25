@@ -1,15 +1,36 @@
-import { ArrowUpRight, CalendarDays, Flag, Globe, MapPin, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight, CalendarDays, Flag, Globe, Link2, MapPin, ShieldCheck } from 'lucide-react'
 import type { Designer } from '../data/designers'
 import { cityById, countryByCode } from '../data/geo'
 import { skillById } from '../data/taxonomy'
-import { useT, fmtMonthYear } from '../lib/i18n'
-import { useStore } from '../lib/store'
+import { useT, fmtMonthYear, DICTS } from '../lib/i18n'
+import { profileLink, useStore } from '../lib/store'
 import { usePublicDesigners } from '../lib/data'
 import { Avatar } from './Avatar'
 import { Button, btnCls, LinkedinIcon, CloseButton, Sheet, VerificationBadge, useEscape, useIsMobile } from './ui'
 import { focusDesignerOnMap } from './SearchBox'
 import { MyProfile } from './MyProfile'
 import { useDesigner } from '../lib/data'
+
+/** Native share sheet on phones; copy to clipboard elsewhere. */
+async function shareProfile(d: Designer) {
+  const s = useStore.getState()
+  const t = DICTS[s.locale]
+  const url = profileLink(d.id)
+  if (navigator.share && window.matchMedia('(pointer: coarse)').matches) {
+    try {
+      await navigator.share({ title: d.name[s.locale], text: `${d.name[s.locale]} — Persian UX Map`, url })
+      return
+    } catch {
+      /* dismissed — fall back to copying */
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url)
+    s.toast(t.linkCopied, 'success')
+  } catch {
+    window.prompt(t.copyLink, url)
+  }
+}
 
 const prettyUrl = (u: string) => u.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')
 
@@ -134,14 +155,19 @@ export function ProfileContent({ d, preview = false }: { d: Designer; preview?: 
         {t.privacy}
       </p>
 
-      {!preview && !d.isMe && (
-        <div className="px-4 pt-3 pb-6">
-          <Button variant="ghost" size="sm" disabled={reported} onClick={() => setReport(d.id)} icon={<Flag size={14} />}>
-            {reported ? t.reported : t.report}
+      {!preview && (
+        <div className="flex items-center justify-between px-4 pt-3 pb-6">
+          <Button variant="ghost" size="sm" onClick={() => shareProfile(d)} icon={<Link2 size={14} />}>
+            {t.copyLink}
           </Button>
+          {!d.isMe && (
+            <Button variant="ghost" size="sm" disabled={reported} onClick={() => setReport(d.id)} icon={<Flag size={14} />}>
+              {reported ? t.reported : t.report}
+            </Button>
+          )}
         </div>
       )}
-      {(preview || d.isMe) && <div className="h-6" />}
+      {preview && <div className="h-6" />}
     </div>
   )
 }

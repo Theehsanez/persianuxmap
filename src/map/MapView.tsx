@@ -230,6 +230,12 @@ export function MapView() {
       mm.keyboard.disableRotation()
       // Detail tiles are optional: if OpenFreeMap is unreachable the country map still renders.
       mm.on('error', (e) => console.warn('[map]', e.error?.message ?? e))
+      // Clicking empty map dismisses the profile / explore panels (markers are DOM elements above the canvas).
+      mm.on('click', () => {
+        const s = useStore.getState()
+        if (s.drawer?.type === 'designer' || s.drawer?.type === 'list') s.closeDrawer()
+        if (s.exploreOpen) s.setExplore(false)
+      })
       mm.on('load', () => {
         if (disposed) return
         setMap(mm)

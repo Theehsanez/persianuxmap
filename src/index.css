@@ -16,9 +16,9 @@
   --color-muted: #9ba3ad;
   --color-subtle: #69717b;
   --color-accent: #f4f4f5;
-  --color-accent-strong: #86e5d8;
-  --color-accent-ink: #062520;
-  --color-accent-soft: rgb(255 255 255 / 0.12);
+  --color-accent-strong: #ffffff;
+  --color-accent-ink: #0b0c0e;
+  --color-accent-soft: rgb(255 255 255 / 0.08);
   --color-danger: #f28b82;
   --color-warn: #e8c07d;
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;

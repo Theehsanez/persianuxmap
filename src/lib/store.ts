@@ -28,6 +28,10 @@ type State = {
   drawer: Drawer
   exploreOpen: boolean
   onboardingOpen: boolean
+  /** 'signin' = returning member: email/Google → code → straight to their profile. */
+  onboardingMode: 'join' | 'signin'
+  /** Signed in (email confirmed) but no profile yet — onboarding resumes at the basics step. */
+  sessionEmail: string | null
   filterSheetOpen: boolean
   reportId: string | null
   reportedIds: string[]
@@ -45,7 +49,7 @@ type State = {
   openList: (ids: string[]) => void
   closeDrawer: () => void
   setExplore: (v: boolean) => void
-  setOnboarding: (v: boolean) => void
+  setOnboarding: (v: boolean, mode?: 'join' | 'signin') => void
   setFilterSheet: (v: boolean) => void
   setReport: (id: string | null) => void
   markReported: (id: string) => void
@@ -95,6 +99,8 @@ export const useStore = create<State>((set, get) => ({
   drawer: null,
   exploreOpen: false,
   onboardingOpen: false,
+  onboardingMode: 'join',
+  sessionEmail: null,
   filterSheetOpen: false,
   reportId: null,
   reportedIds: LS.get<string[]>('pux.reported', []),
@@ -113,12 +119,21 @@ export const useStore = create<State>((set, get) => ({
     set({ filters: { ...get().filters, [k]: next } })
   },
   clearFilters: () => set({ filters: EMPTY_FILTERS }),
-  openDesigner: (id) => set({ drawer: { type: 'designer', id }, exploreOpen: false }),
-  openMe: (edit) => set({ drawer: { type: 'me', edit }, exploreOpen: false }),
+  openDesigner: (id) => {
+    setDesignerParam(id)
+    set({ drawer: { type: 'designer', id }, exploreOpen: false })
+  },
+  openMe: (edit) => {
+    setDesignerParam(null)
+    set({ drawer: { type: 'me', edit }, exploreOpen: false })
+  },
   openList: (ids) => set({ drawer: { type: 'list', ids }, exploreOpen: false }),
-  closeDrawer: () => set({ drawer: null }),
+  closeDrawer: () => {
+    setDesignerParam(null)
+    set({ drawer: null })
+  },
   setExplore: (exploreOpen) => set(exploreOpen ? { exploreOpen, drawer: null } : { exploreOpen }),
-  setOnboarding: (onboardingOpen) => set({ onboardingOpen }),
+  setOnboarding: (onboardingOpen, mode = 'join') => set(onboardingOpen ? { onboardingOpen, onboardingMode: mode } : { onboardingOpen }),
   setFilterSheet: (filterSheetOpen) => set({ filterSheetOpen }),
   setReport: (reportId) => set({ reportId }),
   markReported: (id) => {
@@ -126,7 +141,8 @@ export const useStore = create<State>((set, get) => ({
     LS.set('pux.reported', reportedIds)
     set({ reportedIds })
   },
-  setAccount: (a) => set({ account: a && a.profile ? { ...a, profile: a.profile } : null }),
+  setAccount: (a) =>
+    set({ account: a && a.profile ? { ...a, profile: a.profile } : null, sessionEmail: a && !a.profile && a.emailVerified ? a.email : null }),
   loadDesigners: async () => {
     const designers = await (await api()).designers.list()
     set({ designers, designersLoaded: true })
@@ -164,11 +180,27 @@ export const useStore = create<State>((set, get) => ({
   setMapReady: () => set({ mapReady: true }),
 }))
 
+/** Keep `?d=<id>` in the address bar while a profile is open, so it can be shared or bookmarked. */
+function setDesignerParam(id: string | null) {
+  if (typeof window === 'undefined') return
+  const url = new URL(window.location.href)
+  if (id) url.searchParams.set('d', id)
+  else url.searchParams.delete('d')
+  if (url.href !== window.location.href) history.replaceState(null, '', url)
+}
+
+export const profileLink = (id: string) => {
+  const url = new URL(import.meta.env.BASE_URL, window.location.origin)
+  url.searchParams.set('d', id)
+  return url.toString()
+}
+
 /** Google sends people back with `#auth=google&token=…` (fragment: never reaches servers or logs). */
 function consumeGoogleRedirect(): { email: string; name?: string; picture?: string } | 'error' | null {
   if (typeof window === 'undefined' || !window.location.hash) return null
   const p = new URLSearchParams(window.location.hash.slice(1))
   const clear = () => history.replaceState(null, '', window.location.pathname + window.location.search)
+
   if (p.get('auth_error')) {
     clear()
     return 'error'

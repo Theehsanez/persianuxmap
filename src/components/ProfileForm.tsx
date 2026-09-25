@@ -4,6 +4,7 @@ import { ROLES, SKILLS, MIN_SKILLS, MAX_SKILLS, type RoleId, type SkillId } from
 import { cityById, countryByCode, searchCities, norm, type City } from '../data/geo'
 import type { Designer } from '../data/designers'
 import { useT } from '../lib/i18n'
+import { useStore } from '../lib/store'
 import { Avatar } from './Avatar'
 import { MiniMap } from './MiniMap'
 import { Button, Field, LinkedinIcon, inputCls } from './ui'
@@ -91,13 +92,16 @@ export function designerFromDraft(d: Draft, base: Partial<Designer> = {}): Desig
   }
 }
 
+/** Accept only LinkedIn profile/company URLs in the LinkedIn field. */
+export const isLinkedIn = (u: string) => !u.trim() || (isUrl(u) && /(^|\.)linkedin\.com$/i.test(new URL(normalizeUrl(u)).hostname))
+
 export const draftErrors = (d: Draft) => ({
   name: d.name.trim().length < 2,
   role: !d.role,
   city: !d.cityId,
   skills: d.skills.length < MIN_SKILLS || d.skills.length > MAX_SKILLS,
   links: !d.linkedin.trim() && !d.portfolio.trim(),
-  urls: ![d.linkedin, d.portfolio, d.website].every(isUrl),
+  urls: ![d.linkedin, d.portfolio, d.website].every(isUrl) || !isLinkedIn(d.linkedin),
 })
 
 // ————————————————————————————————— Photo
@@ -124,13 +128,23 @@ function downscale(file: File): Promise<string> {
   })
 }
 
-/** Simulated "import from a connected source": produces a soft portrait illustration. */
-function importedPortrait(hue: number) {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='hsl(${hue} 35% 38%)'/><stop offset='1' stop-color='hsl(${(hue + 40) % 360} 30% 18%)'/></linearGradient></defs><rect width='128' height='128' fill='url(#g)'/><circle cx='64' cy='52' r='22' fill='hsl(${hue} 30% 82%)' opacity='.92'/><path d='M22 128c4-26 22-40 42-40s38 14 42 40z' fill='hsl(${hue} 30% 82%)' opacity='.92'/></svg>`
-  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+/**
+ * Real Gravatar lookup (Gravatar accepts SHA-256 email hashes). `d=404` makes a missing avatar fail
+ * instead of returning a generic placeholder, so we can tell the person nothing was found.
+ */
+async function gravatarFor(email: string): Promise<string | null> {
+  const data = new TextEncoder().encode(email.trim().toLowerCase())
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', data))].map((b) => b.toString(16).padStart(2, '0')).join('')
+  const url = `https://gravatar.com/avatar/${hash}?s=256&d=404`
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => resolve(url)
+    img.onerror = () => resolve(null)
+    img.src = url
+  })
 }
 
-export function PhotoPicker({ draft, set }: { draft: Draft; set: (p: Partial<Draft>) => void }) {
+export function PhotoPicker({ draft, set, email }: { draft: Draft; set: (p: Partial<Draft>) => void; email?: string }) {
   const { t } = useT()
   const file = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
@@ -151,22 +165,24 @@ export function PhotoPicker({ draft, set }: { draft: Draft; set: (p: Partial<Dra
           <Button type="button" size="sm" onClick={() => file.current?.click()} icon={<ImagePlus size={14} />}>
             {t.uploadPhoto}
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={importing}
-            onClick={() => {
-              setImporting(true)
-              setTimeout(() => {
-                set({ photo: importedPortrait(draft.hue) })
+          {email && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={importing}
+              onClick={async () => {
+                setImporting(true)
+                const url = await gravatarFor(email)
                 setImporting(false)
-              }, 900)
-            }}
-            icon={importing ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
-          >
-            {importing ? t.importing : t.importPhoto}
-          </Button>
+                if (url) set({ photo: url })
+                else useStore.getState().toast(t.noGravatar)
+              }}
+              icon={importing ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
+            >
+              {importing ? t.importing : t.importPhoto}
+            </Button>
+          )}
           {draft.photo && (
             <Button type="button" size="sm" variant="ghost" onClick={() => set({ photo: undefined })} icon={<Trash2 size={14} />}>
               {t.removePhoto}
@@ -410,7 +426,12 @@ export function LinkFields({ draft, set, showErrors }: { draft: Draft; set: (p: 
   const { t } = useT()
   const need = showErrors && !draft.linkedin.trim() && !draft.portfolio.trim()
   const row = (k: 'linkedin' | 'portfolio' | 'website', label: string, icon: React.ReactNode, placeholder: string, optional?: boolean) => (
-    <Field label={label} htmlFor={k} optional={optional ? t.optional : undefined} error={showErrors && !isUrl(draft[k]) && t.urlInvalid}>
+    <Field
+      label={label}
+      htmlFor={k}
+      optional={optional ? t.optional : undefined}
+      error={showErrors && (!isUrl(draft[k]) ? t.urlInvalid : k === 'linkedin' && !isLinkedIn(draft[k]) ? t.linkedinInvalid : false)}
+    >
       <div className={`${inputCls} flex items-center gap-2.5 ${need && !optional ? '!border-danger/50' : ''}`}>
         <span className="text-subtle">{icon}</span>
         <input
