@@ -20,7 +20,13 @@ export const DesignerSchema = z.object({
   cityId: z.string(),
   skills: z.array(SkillId),
   bio: L10n,
-  links: z.object({ linkedin: z.string().optional(), portfolio: z.string().optional(), website: z.string().optional() }),
+  links: z.object({
+    linkedin: z.string().optional(),
+    portfolio: z.string().optional(),
+    website: z.string().optional(),
+    instagram: z.string().optional(),
+    telegram: z.string().optional(),
+  }),
   joined: z.string(),
   verification: Verification,
   avatar: z.object({ hue: z.number(), photo: z.string().optional() }),
@@ -81,6 +87,9 @@ export const ProfileInput = z
     linkedin: url,
     portfolio: url,
     website: url,
+    // Handles or profile links; normalised to a bare handle before saving.
+    instagram: z.string().max(100).optional(),
+    telegram: z.string().max(100).optional(),
     // Uploaded photos are downscaled to 256px JPEG data URLs on the client.
     photo: z.string().max(200_000).optional(),
     hue: z.number().min(0).max(360),

@@ -26,6 +26,8 @@ export const toProfileInput = (d: Draft): ProfileInputT => ({
   linkedin: d.linkedin || undefined,
   portfolio: d.portfolio || undefined,
   website: d.website || undefined,
+  instagram: d.instagram.trim() || undefined,
+  telegram: d.telegram.trim() || undefined,
   photo: d.photo,
   hue: d.hue,
 })

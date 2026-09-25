@@ -11,7 +11,7 @@ export type Designer = {
   cityId: string
   skills: SkillId[]
   bio: L10n
-  links: { linkedin?: string; portfolio?: string; website?: string }
+  links: { linkedin?: string; portfolio?: string; website?: string; instagram?: string; telegram?: string }
   joined: string // ISO date
   verification: Verification
   avatar: { hue: number; photo?: string }
@@ -255,6 +255,8 @@ function generate(): Designer[] {
     const p = rnd()
     links.portfolio = p < 0.35 ? `https://dribbble.com/${handle}` : p < 0.65 ? `https://behance.net/${handle}` : `https://${handle}.design`
     if (rnd() < 0.25) links.website = `https://${slug(first)}${i % 3 === 0 ? '.studio' : '.me'}`
+    if (rnd() < 0.45) links.instagram = `${slug(first)}.${slug(last)}`.replace(/-/g, '')
+    if (rnd() < 0.35) links.telegram = `${slug(first)}_${slug(last)}`.replace(/-/g, '')
     return links
   }
 

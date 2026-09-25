@@ -22,13 +22,14 @@ import {
   X,
 } from 'lucide-react'
 import { api, session } from '../api/client'
+import { instagramUrl, telegramUrl } from '../api/shared'
 import type { Account, AdminDesignerT, AdminOverviewT, AdminReportT } from '../api/contract'
 import { cityById, countryByCode } from '../data/geo'
 import { roleById, skillById, type RoleId, type SkillId } from '../data/taxonomy'
 import { useStore } from '../lib/store'
 import { fmtNum } from '../lib/i18n'
 import { Avatar } from '../components/Avatar'
-import { Button, LinkedinIcon, LogoMark, VerificationBadge, inputCls } from '../components/ui'
+import { Button, InstagramIcon, LinkedinIcon, LogoMark, TelegramIcon, VerificationBadge, inputCls } from '../components/ui'
 import { Toasts } from '../components/Overlays'
 
 // ————————————————————————————————— copy (EN / FA)
@@ -985,6 +986,8 @@ function Links({ d }: { d: AdminDesignerT }) {
       {link(d.links.portfolio, <ArrowUpRight size={13} />, pretty(d.links.portfolio))}
       {link(d.links.linkedin, <LinkedinIcon size={13} />, 'LinkedIn')}
       {link(d.links.website, <Globe size={13} />, pretty(d.links.website))}
+      {d.links.instagram && link(instagramUrl(d.links.instagram), <InstagramIcon size={13} />, '@' + d.links.instagram)}
+      {d.links.telegram && link(telegramUrl(d.links.telegram), <TelegramIcon size={13} />, '@' + d.links.telegram)}
       {link(`${import.meta.env.BASE_URL}?d=${encodeURIComponent(d.id)}`, <MapIcon size={13} />, t.viewOnMap)}
     </div>
   )

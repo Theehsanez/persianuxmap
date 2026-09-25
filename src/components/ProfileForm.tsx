@@ -3,11 +3,12 @@ import { Check, ImagePlus, Link2, Globe, MapPin, Search, Trash2, UserRound, X, L
 import { ROLES, SKILLS, MIN_SKILLS, MAX_SKILLS, type RoleId, type SkillId } from '../data/taxonomy'
 import { cityById, countryByCode, searchCities, norm, type City } from '../data/geo'
 import type { Designer } from '../data/designers'
+import { socialHandle } from '../api/shared'
 import { useT } from '../lib/i18n'
 import { useStore } from '../lib/store'
 import { Avatar } from './Avatar'
 import { MiniMap } from './MiniMap'
-import { Button, Field, LinkedinIcon, inputCls } from './ui'
+import { Button, Field, InstagramIcon, LinkedinIcon, TelegramIcon, inputCls } from './ui'
 
 export type Draft = {
   name: string
@@ -21,6 +22,8 @@ export type Draft = {
   linkedin: string
   portfolio: string
   website: string
+  instagram: string
+  telegram: string
 }
 
 export const emptyDraft = (): Draft => ({
@@ -34,6 +37,8 @@ export const emptyDraft = (): Draft => ({
   linkedin: '',
   portfolio: '',
   website: '',
+  instagram: '',
+  telegram: '',
 })
 
 export const BIO_MAX = 180
@@ -51,6 +56,8 @@ export function draftFromDesigner(d: Designer): Draft {
     linkedin: d.links.linkedin ?? '',
     portfolio: d.links.portfolio ?? '',
     website: d.links.website ?? '',
+    instagram: d.links.instagram ? '@' + d.links.instagram : '',
+    telegram: d.links.telegram ? '@' + d.links.telegram : '',
   }
 }
 
@@ -85,6 +92,8 @@ export function designerFromDraft(d: Draft, base: Partial<Designer> = {}): Desig
       linkedin: normalizeUrl(d.linkedin) || undefined,
       portfolio: normalizeUrl(d.portfolio) || undefined,
       website: normalizeUrl(d.website) || undefined,
+      instagram: socialHandle('instagram', d.instagram) || undefined,
+      telegram: socialHandle('telegram', d.telegram) || undefined,
     },
     joined: base.joined ?? new Date().toISOString(),
     verification: base.verification ?? 'email',
@@ -102,6 +111,7 @@ export const draftErrors = (d: Draft) => ({
   skills: d.skills.length < MIN_SKILLS || d.skills.length > MAX_SKILLS,
   links: !d.linkedin.trim() && !d.portfolio.trim(),
   urls: ![d.linkedin, d.portfolio, d.website].every(isUrl) || !isLinkedIn(d.linkedin),
+  social: socialHandle('instagram', d.instagram) === null || socialHandle('telegram', d.telegram) === null,
 })
 
 // ————————————————————————————————— Photo
@@ -425,6 +435,26 @@ export function SkillPicker({ value, onChange }: { value: SkillId[]; onChange: (
 export function LinkFields({ draft, set, showErrors }: { draft: Draft; set: (p: Partial<Draft>) => void; showErrors?: boolean }) {
   const { t } = useT()
   const need = showErrors && !draft.linkedin.trim() && !draft.portfolio.trim()
+  const social = (k: 'instagram' | 'telegram', label: string, icon: React.ReactNode, placeholder: string, invalid: string) => (
+    <Field label={label} htmlFor={k} optional={t.optional} error={showErrors && socialHandle(k, draft[k]) === null && invalid}>
+      {/* Handles are Latin: keep the whole field left-to-right so "@" sits right before the name. */}
+      <div className={`${inputCls} flex items-center gap-2.5`} dir="ltr">
+        <span className="text-subtle">{icon}</span>
+        <span className="latin -me-2 text-subtle">@</span>
+        <input
+          id={k}
+          dir="ltr"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          value={draft[k].replace(/^@/, '')}
+          onChange={(e) => set({ [k]: e.target.value })}
+          placeholder={placeholder}
+          className="latin h-full min-w-0 flex-1 bg-transparent text-left outline-none placeholder:text-subtle"
+        />
+      </div>
+    </Field>
+  )
   const row = (k: 'linkedin' | 'portfolio' | 'website', label: string, icon: React.ReactNode, placeholder: string, optional?: boolean) => (
     <Field
       label={label}
@@ -453,6 +483,12 @@ export function LinkFields({ draft, set, showErrors }: { draft: Draft; set: (p: 
       {row('portfolio', t.portfolio, <Link2 size={16} />, 'behance.net/you · dribbble.com/you')}
       <p className={`-mt-1 text-xs ${need ? 'text-danger' : 'text-subtle'}`}>{t.linksRule}</p>
       {row('website', t.personalWebsite, <Globe size={16} />, 'yourname.design', true)}
+      <div className="mt-2 border-t border-line pt-4">
+        <p className="text-[13px] font-medium text-text/90">{t.social}</p>
+        <p className="mt-0.5 text-xs text-subtle">{t.socialHint}</p>
+      </div>
+      {social('instagram', t.instagram, <InstagramIcon size={16} />, 'your.handle', t.instagramInvalid)}
+      {social('telegram', t.telegram, <TelegramIcon size={16} />, 'your_username', t.telegramInvalid)}
     </div>
   )
 }

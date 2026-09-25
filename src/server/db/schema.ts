@@ -33,6 +33,9 @@ export const profiles = sqliteTable(
     linkedin: text('linkedin'),
     portfolio: text('portfolio'),
     website: text('website'),
+    /** Social handles, stored without @ or URL (rendered as instagram.com/… and t.me/…). */
+    instagram: text('instagram'),
+    telegram: text('telegram'),
     photo: text('photo'),
     hue: real('hue').notNull(),
     verification: text('verification', { enum: ['unverified', 'email', 'pending', 'verified'] }).notNull().default('email'),

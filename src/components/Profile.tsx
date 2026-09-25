@@ -1,12 +1,13 @@
 import { ArrowUpRight, CalendarDays, Flag, Globe, Link2, MapPin, ShieldCheck } from 'lucide-react'
 import type { Designer } from '../data/designers'
+import { instagramUrl, telegramUrl } from '../api/shared'
 import { cityById, countryByCode } from '../data/geo'
 import { skillById } from '../data/taxonomy'
 import { useT, fmtMonthYear, DICTS } from '../lib/i18n'
 import { profileLink, useStore } from '../lib/store'
 import { usePublicDesigners } from '../lib/data'
 import { Avatar } from './Avatar'
-import { Button, btnCls, LinkedinIcon, CloseButton, Sheet, VerificationBadge, useEscape, useIsMobile } from './ui'
+import { Button, btnCls, InstagramIcon, LinkedinIcon, TelegramIcon, CloseButton, Sheet, VerificationBadge, useEscape, useIsMobile } from './ui'
 import { focusDesignerOnMap } from './SearchBox'
 import { MyProfile } from './MyProfile'
 import { useDesigner } from '../lib/data'
@@ -34,7 +35,7 @@ async function shareProfile(d: Designer) {
 
 const prettyUrl = (u: string) => u.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')
 
-export function ProfileContent({ d, preview = false }: { d: Designer; preview?: boolean }) {
+export function ProfileContent({ d, preview = false, bare = false }: { d: Designer; preview?: boolean; bare?: boolean }) {
   const { t, locale } = useT()
   const city = cityById[d.cityId]
   const country = city ? countryByCode[city.country] : undefined
@@ -48,7 +49,7 @@ export function ProfileContent({ d, preview = false }: { d: Designer; preview?: 
 
   return (
     <div className="stagger flex flex-col">
-      <div className="px-6 pt-2 md:pt-6">
+      {!bare && <div className="px-6 pt-2 md:pt-6">
         <div className="relative w-fit">
           <span className="block rounded-full p-[3px] ring-1 ring-line-strong">
             <Avatar d={d} size={76} />
@@ -72,7 +73,7 @@ export function ProfileContent({ d, preview = false }: { d: Designer; preview?: 
             <span className="ms-1 text-subtle">{country?.flag}</span>
           </p>
         )}
-      </div>
+      </div>}
 
       {d.bio[locale] || d.bio.en ? <p className="px-6 pt-5 text-[14.5px] leading-[1.7] text-text/90">{d.bio[locale] || d.bio.en}</p> : null}
 
@@ -121,6 +122,26 @@ export function ProfileContent({ d, preview = false }: { d: Designer; preview?: 
             </a>
           )}
         </div>
+        {(d.links.instagram || d.links.telegram) && (
+          <div className="flex gap-2">
+            {d.links.instagram && (
+              <a href={preview ? undefined : instagramUrl(d.links.instagram)} target="_blank" rel="noreferrer noopener" className={`${btnCls()} min-w-0 flex-1`} title={t.instagram}>
+                <InstagramIcon size={16} className="shrink-0" />
+                <span className="latin truncate" dir="ltr">
+                  @{d.links.instagram}
+                </span>
+              </a>
+            )}
+            {d.links.telegram && (
+              <a href={preview ? undefined : telegramUrl(d.links.telegram)} target="_blank" rel="noreferrer noopener" className={`${btnCls()} min-w-0 flex-1`} title={t.telegram}>
+                <TelegramIcon size={16} className="shrink-0" />
+                <span className="latin truncate" dir="ltr">
+                  @{d.links.telegram}
+                </span>
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mx-6 mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-5 text-[12.5px] text-muted">

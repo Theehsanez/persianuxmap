@@ -259,3 +259,23 @@ export function LinkedinIcon({ size = 16, className = '' }: { size?: number; cla
     </svg>
   )
 }
+
+/** Instagram glyph (brand icons are not part of Lucide). */
+export function InstagramIcon({ size = 16, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden className={className}>
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4.2" />
+      <circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+/** Telegram glyph. */
+export function TelegramIcon({ size = 16, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+      <path d="M21.4 4.1 2.9 11.3c-1.3.5-1.2 1.2-.2 1.5l4.7 1.5 1.8 5.6c.2.6.1.9.8.9.5 0 .7-.2 1-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8l3.1-14.7c.3-1.3-.5-1.9-1.5-1.5Zm-3.5 3.4-8.7 7.9-.3 3.6-1.6-5 10.2-6.4c.5-.3.9-.1.4.3Z" />
+    </svg>
+  )
+}

@@ -31,6 +31,8 @@ export async function seedIfEmpty(db: LibSQLDatabase<typeof schema>) {
     linkedin: d.links.linkedin ?? null,
     portfolio: d.links.portfolio ?? null,
     website: d.links.website ?? null,
+    instagram: d.links.instagram ?? null,
+    telegram: d.links.telegram ?? null,
     photo: d.avatar.photo ?? null,
     hue: d.avatar.hue,
     verification: d.verification,

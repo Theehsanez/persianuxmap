@@ -235,7 +235,7 @@ export function Onboarding() {
     !!provider && (provider === 'google' || isEmail(email)),
     !errs.name && !errs.role && !errs.city,
     !errs.skills,
-    !errs.links && !errs.urls,
+    !errs.links && !errs.urls && !errs.social,
     verified,
     true,
   ][step]

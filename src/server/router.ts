@@ -2,7 +2,7 @@ import { implement, ORPCError } from '@orpc/server'
 import { and, eq } from 'drizzle-orm'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { contract, type Account } from '../api/contract'
-import { designerFromInput, randomCode } from '../api/shared'
+import { designerFromInput, randomCode, socialHandle } from '../api/shared'
 import type { Designer } from '../data/designers'
 import type { RoleId, SkillId } from '../data/taxonomy'
 import { cityById } from '../data/geo'
@@ -26,7 +26,13 @@ const toDesigner = (p: ProfileRow): Designer => ({
   cityId: p.cityId,
   skills: p.skills as SkillId[],
   bio: { en: p.bioEn, fa: p.bioFa },
-  links: { linkedin: p.linkedin ?? undefined, portfolio: p.portfolio ?? undefined, website: p.website ?? undefined },
+  links: {
+    linkedin: p.linkedin ?? undefined,
+    portfolio: p.portfolio ?? undefined,
+    website: p.website ?? undefined,
+    instagram: p.instagram ?? undefined,
+    telegram: p.telegram ?? undefined,
+  },
   joined: p.joinedAt.toISOString(),
   verification: p.verification,
   avatar: { hue: p.hue, photo: p.photo ?? undefined },
@@ -157,6 +163,8 @@ export const router = os.router({
     save: os.profile.save.use(authed).handler(async ({ input, context }) => {
       const city = cityById[input.cityId]
       if (!city) throw new ORPCError('BAD_REQUEST', { message: 'Unknown city' })
+      if (socialHandle('instagram', input.instagram) === null) throw new ORPCError('BAD_REQUEST', { message: 'Invalid Instagram handle' })
+      if (socialHandle('telegram', input.telegram) === null) throw new ORPCError('BAD_REQUEST', { message: 'Invalid Telegram username' })
       const db = await getDb()
       const existing = await db.select().from(profiles).where(eq(profiles.userId, context.user.id)).get()
       const d = designerFromInput(input, {
@@ -178,6 +186,8 @@ export const router = os.router({
         linkedin: d.links.linkedin ?? null,
         portfolio: d.links.portfolio ?? null,
         website: d.links.website ?? null,
+        instagram: d.links.instagram ?? null,
+        telegram: d.links.telegram ?? null,
         photo: d.avatar.photo ?? null,
         hue: d.avatar.hue,
       }
