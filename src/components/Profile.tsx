@@ -146,6 +146,37 @@ export function ProfileContent({ d, preview = false }: { d: Designer; preview?: 
   )
 }
 
+/** People who still share one spot at the deepest zoom — pick someone to open their profile. */
+function PeopleList({ ids }: { ids: string[] }) {
+  const { t, locale, n } = useT()
+  const all = usePublicDesigners()
+  const people = ids.map((id) => all.find((d) => d.id === id)).filter(Boolean) as Designer[]
+  const city = people[0] ? cityById[people[0].cityId] : undefined
+  return (
+    <div className="stagger flex flex-col px-4 pt-3 pb-6 md:pt-6">
+      <div className="px-2 pb-3 pe-12">
+        <h2 className="text-[18px] font-semibold">{t.peopleHere(n(people.length))}</h2>
+        {city && <p className="mt-0.5 text-[13px] text-muted">{city[locale]}</p>}
+      </div>
+      {people.map((d) => (
+        <button
+          key={d.id}
+          type="button"
+          onClick={() => focusDesignerOnMap(d.id)}
+          className="flex items-center gap-3 rounded-xl px-2 py-2.5 text-start transition-colors hover:bg-white/[0.05]"
+        >
+          <Avatar d={d} size={38} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[14px] font-medium">{d.name[locale]}</span>
+            <span className="block truncate text-[12.5px] text-muted">{d.title[locale]}</span>
+          </span>
+          {d.verification === 'verified' && <ShieldCheck size={15} className="shrink-0 text-subtle" />}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function ProfileDrawer() {
   const drawer = useStore((s) => s.drawer)
   const close = useStore((s) => s.closeDrawer)
@@ -155,7 +186,8 @@ export function ProfileDrawer() {
   useEscape(close, !!drawer && !mobile)
 
   if (!drawer) return null
-  const body = drawer.type === 'me' ? <MyProfile /> : d ? <ProfileContent key={d.id} d={d} /> : null
+  const body =
+    drawer.type === 'me' ? <MyProfile /> : drawer.type === 'list' ? <PeopleList ids={drawer.ids} /> : d ? <ProfileContent key={d.id} d={d} /> : null
   if (!body) return null
 
   if (mobile) {
@@ -167,7 +199,7 @@ export function ProfileDrawer() {
   }
   return (
     <aside
-      key={drawer.type === 'designer' ? drawer.id : 'me'}
+      key={drawer.type === 'designer' ? drawer.id : drawer.type === 'list' ? 'list:' + drawer.ids[0] : 'me'}
       className="drawer-enter surface-solid absolute end-4 top-[76px] bottom-4 z-30 flex w-[400px] flex-col overflow-hidden rounded-[22px]"
       aria-label={t.profileCard}
     >

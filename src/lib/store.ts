@@ -10,7 +10,7 @@ export const EMPTY_FILTERS: Filters = { q: '', roles: [], skills: [], countries:
 /** A signed-in person who has finished onboarding (has a profile). */
 export type Account = Omit<ApiAccount, 'profile'> & { profile: Designer }
 
-export type Drawer = { type: 'designer'; id: string } | { type: 'me'; edit?: boolean } | null
+export type Drawer = { type: 'designer'; id: string } | { type: 'me'; edit?: boolean } | { type: 'list'; ids: string[] } | null
 export type Toast = { id: number; text: string; tone?: 'default' | 'success' }
 
 type State = {
@@ -41,6 +41,8 @@ type State = {
   clearFilters: () => void
   openDesigner: (id: string) => void
   openMe: (edit?: boolean) => void
+  /** Show a list of people (a group that still overlaps at the deepest zoom). */
+  openList: (ids: string[]) => void
   closeDrawer: () => void
   setExplore: (v: boolean) => void
   setOnboarding: (v: boolean) => void
@@ -113,6 +115,7 @@ export const useStore = create<State>((set, get) => ({
   clearFilters: () => set({ filters: EMPTY_FILTERS }),
   openDesigner: (id) => set({ drawer: { type: 'designer', id }, exploreOpen: false }),
   openMe: (edit) => set({ drawer: { type: 'me', edit }, exploreOpen: false }),
+  openList: (ids) => set({ drawer: { type: 'list', ids }, exploreOpen: false }),
   closeDrawer: () => set({ drawer: null }),
   setExplore: (exploreOpen) => set(exploreOpen ? { exploreOpen, drawer: null } : { exploreOpen }),
   setOnboarding: (onboardingOpen) => set({ onboardingOpen }),

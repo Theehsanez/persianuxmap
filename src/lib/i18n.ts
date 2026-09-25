@@ -187,6 +187,7 @@ const en = {
   loadErrorTitle: 'Couldn’t load designers',
   loadErrorBody: 'The server didn’t respond as expected. Check the connection and try again.',
   retry: 'Try again',
+  peopleHere: (n: string) => `${n} designers here`,
   serverStatus: 'Server status',
   ago: {
     today: 'today',
@@ -379,6 +380,7 @@ const fa: Dict = {
   loadErrorTitle: 'بارگذاری طراحان ممکن نشد',
   loadErrorBody: 'سرور پاسخ درستی نداد. اتصال را بررسی کنید و دوباره تلاش کنید.',
   retry: 'تلاش دوباره',
+  peopleHere: (n) => `${n} طراح در این نقطه`,
   serverStatus: 'وضعیت سرور',
   ago: {
     today: 'امروز',

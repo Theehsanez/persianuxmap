@@ -125,6 +125,9 @@ input:focus-visible, textarea:focus-visible { outline: none; }
   transition: transform 0.2s var(--ease), border-color 0.2s, background 0.2s;
 }
 .marker-cluster:hover { z-index: 5; }
+/* Sub-clusters inside an open city sit among the avatars: a touch lighter, no entrance delay. */
+.marker-sub { animation-delay: 0ms; }
+.marker-sub .cluster-core { background: #1b1e23; border-color: rgb(255 255 255 / 0.4); }
 .marker-cluster:hover .cluster-core { transform: scale(1.08); border-color: rgb(255 255 255 / 0.8); background: #1c2025; }
 .marker-cluster.is-burst .cluster-core { animation: tap 0.35s ease; }
 @keyframes tap { 40% { scale: 0.92; } 100% { scale: 1; } }

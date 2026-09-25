@@ -12,6 +12,12 @@ import { NeuralLayer, type NeuralFrame } from './NeuralLayer'
 
 
 type Cluster = { key: string; groups: CityGroup[]; count: number }
+/** A group of people inside an open city who would overlap on screen at the current zoom. */
+type SubCluster = { key: string; ids: string[] }
+
+/** Minimum on-screen distance between two people before they're merged into a sub-cluster. */
+const MIN_GAP = 40
+export const subBubbleSize = (n: number) => Math.round(Math.min(46, 26 + Math.sqrt(n) * 3.2))
 
 /** Bubble diameter grows gently with the number of people. */
 export const bubbleSize = (count: number) => Math.round(Math.min(66, 30 + Math.sqrt(count) * 4.4))
@@ -29,7 +35,12 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
   const scatters = useMemo(() => new Map(groups.map((g) => [g.city.id, scatter(g.city, g.members)])), [groups])
 
   const [clusters, setClusters] = useState<Cluster[]>([])
+  const [subs, setSubs] = useState<SubCluster[]>([])
   const sig = useRef('')
+  const subSig = useRef('')
+  const subRefs = useRef(new Map<string, HTMLElement>())
+  const selectedRef = useRef(selectedId)
+  selectedRef.current = selectedId
   const avatarRefs = useRef(new Map<string, HTMLElement>())
   const clusterRefs = useRef(new Map<string, HTMLElement>())
   const areaRefs = useRef(new Map<string, HTMLElement>())
@@ -84,6 +95,7 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
     }
 
     // 2. Individual avatars flow out from the city centre as the city splits.
+    const subsOut: { key: string; ids: string[]; x: number; y: number; t: number }[] = []
     for (const x of per) {
       const area = areaRefs.current.get(x.g.city.id)
       if (area) {
@@ -97,35 +109,112 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
           area.style.width = area.style.height = `${2 * r * (0.6 + 0.4 * x.t)}px`
         }
       }
-      const pos = scatters.get(x.g.city.id)
-      for (const d of x.g.members) {
-        const el = avatarRefs.current.get(d.id)
-        if (!el) continue
-        if (x.t <= 0.001) {
+      const pos = scatters.get(x.g.city.id)!
+      if (x.t <= 0.001) {
+        for (const d of x.g.members) {
+          const el = avatarRefs.current.get(d.id)
+          if (!el) continue
           el.style.visibility = 'hidden'
           if (el.dataset.shown) {
             delete el.dataset.shown
             el.classList.remove('marker-appear')
           }
-          continue
         }
-        if (!el.dataset.shown) {
-          // Staggered pop the first time a person becomes visible after their city opens.
-          el.dataset.shown = '1'
-          el.style.setProperty('--appear-delay', `${Math.min(x.g.members.indexOf(d), 24) * 22}ms`)
-          el.classList.add('marker-appear')
-        }
-        const [plng, plat] = pos!.get(d.id)!
+        continue
+      }
+
+      // Where everyone in this city is on screen right now (flowing out from the centre while it opens).
+      const pts = x.g.members.map((d) => {
+        const [plng, plat] = pos.get(d.id)!
         const q = map.project([plng + x.dx, plat])
         const px = x.p.x + (q.x - x.p.x) * x.t
         const py = x.p.y + (q.y - x.p.y) * x.t
-        const off = px < -40 || px > W + 40 || py < -40 || py > H + 40
-        nf.people.set(d.id, { x: px, y: py })
-        el.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -50%) scale(${0.6 + 0.4 * x.t})`
+        return { d, px, py, off: px < -40 || px > W + 40 || py < -40 || py > H + 40 }
+      })
+
+      // Sub-clustering: greedy, grid-accelerated. People closer than MIN_GAP join the nearest seed, most
+      // central first, so dense cities (hundreds of people) never pile up at any zoom level.
+      const seeds: { key: string; x: number; y: number; ids: string[]; sx: number; sy: number }[] = []
+      const grid = new Map<string, number[]>()
+      const cellOf = (px: number, py: number) => [Math.floor(px / MIN_GAP), Math.floor(py / MIN_GAP)]
+      const order = [...pts].filter((p) => !p.off).sort((a, b) => Math.hypot(a.px - x.p.x, a.py - x.p.y) - Math.hypot(b.px - x.p.x, b.py - x.p.y))
+      const solo = (p: (typeof pts)[number]) => p.d.id === selectedRef.current || p.d.isMe
+      for (const p of order) {
+        let host = -1
+        if (!solo(p)) {
+          const [cx, cy] = cellOf(p.px, p.py)
+          let best = MIN_GAP
+          for (let gx = cx - 1; gx <= cx + 1; gx++)
+            for (let gy = cy - 1; gy <= cy + 1; gy++)
+              for (const i of grid.get(gx + ':' + gy) ?? []) {
+                const dist = Math.hypot(seeds[i].x - p.px, seeds[i].y - p.py)
+                if (dist < best) {
+                  best = dist
+                  host = i
+                }
+              }
+        }
+        if (host >= 0) {
+          const h = seeds[host]
+          h.ids.push(p.d.id)
+          h.sx += p.px
+          h.sy += p.py
+        } else {
+          const i = seeds.push({ key: p.d.id, x: p.px, y: p.py, ids: [p.d.id], sx: p.px, sy: p.py }) - 1
+          if (!solo(p)) {
+            const [cx, cy] = cellOf(p.px, p.py)
+            const k = cx + ':' + cy
+            grid.set(k, [...(grid.get(k) ?? []), i])
+          }
+        }
+      }
+      const inSub = new Map<string, { x: number; y: number }>()
+      for (const sd of seeds) {
+        if (sd.ids.length < 2) continue
+        const cx = sd.sx / sd.ids.length
+        const cy = sd.sy / sd.ids.length
+        sd.ids.forEach((id) => inSub.set(id, { x: cx, y: cy }))
+        subsOut.push({ key: sd.key, ids: sd.ids, x: cx, y: cy, t: x.t })
+      }
+
+      for (const p of pts) {
+        const el = avatarRefs.current.get(p.d.id)
+        if (!el) continue
+        const merged = inSub.get(p.d.id)
+        // Signals in the network travel to the bubble a person is merged into.
+        nf.people.set(p.d.id, merged ?? { x: p.px, y: p.py })
+        if (merged || p.off) {
+          el.style.visibility = 'hidden'
+          el.style.pointerEvents = 'none'
+          delete el.dataset.shown
+          el.classList.remove('marker-appear')
+          continue
+        }
+        if (!el.dataset.shown) {
+          // Staggered pop the first time a person becomes visible.
+          el.dataset.shown = '1'
+          el.style.setProperty('--appear-delay', `${Math.min(x.g.members.indexOf(p.d), 24) * 22}ms`)
+          el.classList.add('marker-appear')
+        }
+        el.style.transform = `translate3d(${p.px}px, ${p.py}px, 0) translate(-50%, -50%) scale(${0.6 + 0.4 * x.t})`
         el.style.opacity = String(Math.min(1, x.t * 1.5))
-        el.style.visibility = off ? 'hidden' : 'visible'
+        el.style.visibility = 'visible'
         el.style.pointerEvents = x.t > 0.6 ? 'auto' : 'none'
       }
+    }
+
+    const nextSubSig = subsOut.map((sc) => sc.key + ':' + sc.ids.length).join('|')
+    if (nextSubSig !== subSig.current) {
+      subSig.current = nextSubSig
+      setSubs(subsOut.map(({ key, ids }) => ({ key, ids })))
+    }
+    for (const sc of subsOut) {
+      const el = subRefs.current.get(sc.key)
+      if (!el) continue
+      el.style.transform = `translate3d(${sc.x}px, ${sc.y}px, 0) translate(-50%, -50%) scale(${0.6 + 0.4 * sc.t})`
+      el.style.opacity = String(Math.min(1, sc.t * 1.5))
+      el.style.visibility = 'visible'
+      el.style.pointerEvents = sc.t > 0.6 ? 'auto' : 'none'
     }
   }, [map, groups, scatters])
 
@@ -142,6 +231,16 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
   useLayoutEffect(() => {
     update()
   })
+
+  const openList = useStore((s) => s.openList)
+  const onSub = (sc: SubCluster, el: HTMLElement) => {
+    const r = el.getBoundingClientRect()
+    const box = map.getContainer().getBoundingClientRect()
+    const at = map.unproject([r.left + r.width / 2 - box.left, r.top + r.height / 2 - box.top])
+    // Zoom in until the group comes apart; at the deepest zoom, list the people instead.
+    if (map.getZoom() < map.getMaxZoom() - 0.5) map.easeTo({ center: at, zoom: Math.min(map.getMaxZoom(), map.getZoom() + 1.6), duration: 700 })
+    else openList(sc.ids)
+  }
 
   const onCluster = (c: Cluster) => {
     // A merged cluster named after a city that holds most of its people goes straight to that city;
@@ -195,6 +294,27 @@ export function MarkerLayer({ map, designers }: { map: MLMap; designers: Designe
           </button>
         )),
       )}
+      {subs.map((sc) => {
+        const size = subBubbleSize(sc.ids.length)
+        return (
+          <button
+            key={'sub-' + sc.key}
+            ref={(el) => {
+              if (el) subRefs.current.set(sc.key, el)
+              else subRefs.current.delete(sc.key)
+            }}
+            type="button"
+            onClick={(e) => onSub(sc, e.currentTarget)}
+            className="marker-cluster marker-sub"
+            aria-label={n(sc.ids.length)}
+            style={{ visibility: 'hidden', width: size, height: size }}
+          >
+            <span className="cluster-core" style={{ fontSize: 12 }}>
+              {n(sc.ids.length)}
+            </span>
+          </button>
+        )
+      })}
       {clusters.map((c, i) => {
         const size = bubbleSize(c.count)
         const names = c.groups.map((g) => g.city[locale])
