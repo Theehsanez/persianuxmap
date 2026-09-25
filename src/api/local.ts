@@ -60,6 +60,10 @@ const mutate = (email: string, fn: (a: Store['accounts'][string]) => void) => {
   return account(s, email)
 }
 
+const noAdmin = (): never => {
+  throw new ORPCError('FORBIDDEN', { message: 'The admin panel requires the server version' })
+}
+
 export const localRouter = os.router({
   designers: {
     list: os.designers.list.handler(() => {
@@ -71,7 +75,7 @@ export const localRouter = os.router({
     }),
   },
   auth: {
-    config: os.auth.config.handler(() => ({ googleOAuth: false, emailDelivery: false })),
+    config: os.auth.config.handler(() => ({ googleOAuth: false, emailDelivery: false, adminConfigured: false })),
     requestCode: os.auth.requestCode.handler(({ input }) => {
       const s = load()
       const code = randomCode()
@@ -121,6 +125,16 @@ export const localRouter = os.router({
       save(s)
       return { ok: true as const }
     }),
+  },
+  // The admin panel needs the real server; the static demo has no shared data to moderate.
+  admin: {
+    overview: os.admin.overview.handler(() => noAdmin()),
+    designers: os.admin.designers.handler(() => noAdmin()),
+    setVerification: os.admin.setVerification.handler(() => noAdmin()),
+    setHidden: os.admin.setHidden.handler(() => noAdmin()),
+    deleteProfile: os.admin.deleteProfile.handler(() => noAdmin()),
+    reports: os.admin.reports.handler(() => noAdmin()),
+    resolveReport: os.admin.resolveReport.handler(() => noAdmin()),
   },
   reports: {
     create: os.reports.create.handler(({ input }) => {

@@ -39,6 +39,7 @@ On first start the database is created, migrated and seeded with ~236 demo desig
 | `EMAIL_FROM` | `Persian UX Map <onboarding@resend.dev>` | Sender; must use a domain verified in Resend |
 | `EXPOSE_EMAIL_CODES` | `true` without Resend, `false` with it | Return the code to the browser (the "demo inbox") |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Turns on real “Continue with Google” (OAuth). Without them the Google button is simulated. |
+| `ADMIN_EMAILS` | — | Comma-separated admin emails for the `/admin` panel. Once set, the demo “simulate approval” shortcut is turned off. |
 | `APP_URL` | request origin | Public site URL, used for the Google redirect URI |
 | `PORT` | `3000` | used by `npm start` |
 
@@ -46,6 +47,17 @@ On first start the database is created, migrated and seeded with ~236 demo desig
 
 - **Email (Resend):** create an API key, verify your sending domain (DNS records in Resend), then set `RESEND_API_KEY` and `EMAIL_FROM`. The code is then only emailed, and the demo inbox disappears.
 - **Google:** in Google Cloud Console → APIs & Services → Credentials, create an OAuth client ID (Web application). Add the redirect URI `https://<your-site>/api/auth/google/callback` (plus `http://localhost:5173/api/auth/google/callback` for development), then set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. When these are set, the simulated Google login is switched off.
+
+### Admin panel (`/admin`)
+
+Set `ADMIN_EMAILS` (for example `you@example.com,teammate@example.com`), then open `/admin` and sign in with one of those addresses. It includes:
+
+- **Overview:** designers (total and visible), new sign-ups (7 and 30 days, plus a weekly chart for the last 12 weeks), verification breakdown, real vs demo accounts, sign-in methods, profiles not finished, active sessions, and top cities, countries, skills and roles.
+- **Verification:** the queue of designers who requested the badge, with their links; approve or reject.
+- **Reports:** open, actioned and dismissed reports with reason, note and reporter; dismiss, hide the profile, or delete it.
+- **Designers:** search by name, email or city; filter (pending, verified, hidden, reported, real accounts); verify, hide or show, delete.
+
+Every admin action is checked on the server, so non-admin sessions get `403`.
 
 ### Static demo (GitHub Pages)
 

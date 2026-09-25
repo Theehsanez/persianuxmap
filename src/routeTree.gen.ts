@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc.$'
 import { Route as ApiAuthGoogleIndexRouteImport } from './routes/api/auth/google/index'
@@ -18,6 +19,11 @@ import { Route as ApiAuthGoogleCallbackRouteImport } from './routes/api/auth/goo
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -43,6 +49,7 @@ const ApiAuthGoogleCallbackRoute = ApiAuthGoogleCallbackRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/api/health': typeof ApiHealthRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/api/health': typeof ApiHealthRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/api/health': typeof ApiHealthRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
@@ -67,6 +76,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/api/health'
     | '/api/rpc/$'
     | '/api/auth/google/callback'
@@ -74,6 +84,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/api/health'
     | '/api/rpc/$'
     | '/api/auth/google/callback'
@@ -81,6 +92,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/api/health'
     | '/api/rpc/$'
     | '/api/auth/google/callback'
@@ -89,6 +101,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiRpcSplatRoute: typeof ApiRpcSplatRoute
   ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
@@ -102,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -137,6 +157,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiRpcSplatRoute: ApiRpcSplatRoute,
   ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,

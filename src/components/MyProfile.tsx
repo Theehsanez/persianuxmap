@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, BadgeCheck, Check, Circle, Eye, EyeOff, LogOut, MailCheck, Link2, Pencil, Trash2, Clock } from 'lucide-react'
+import { AlertTriangle, ArrowUpRight, Shield, BadgeCheck, Check, Circle, Eye, EyeOff, LogOut, MailCheck, Link2, Pencil, Trash2, Clock } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { MIN_SKILLS } from '../data/taxonomy'
 import { useT } from '../lib/i18n'
@@ -19,6 +19,7 @@ export function MyProfile() {
   const close = useStore((s) => s.closeDrawer)
   const toast = useStore((s) => s.toast)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const adminConfigured = useStore((s) => !!s.authConfig.adminConfigured)
 
   if (!account) return null
   const p = account.profile
@@ -85,15 +86,25 @@ export function MyProfile() {
         {p.verification === 'pending' && (
           <div className="mt-3 flex flex-col gap-2">
             <p className="text-[12px] leading-relaxed text-subtle">{t.pendingNote}</p>
-            <button
+            {!adminConfigured && <button
               className="self-start text-[12px] text-accent underline-offset-4 hover:underline"
               onClick={async () => applyAccount((await call((api) => api.profile.approveDemo())) ?? account)}
             >
               {t.simulateApproval}
-            </button>
+            </button>}
           </div>
         )}
       </div>
+
+      {account.isAdmin && (
+        <a href={`${import.meta.env.BASE_URL}admin`} className="mx-6 mt-3 flex items-center gap-3 rounded-2xl border border-line bg-white/[0.02] p-4 transition-colors hover:bg-white/[0.05]">
+          <span className="grid size-9 place-items-center rounded-xl bg-white/[0.06]">
+            <Shield size={17} />
+          </span>
+          <span className="flex-1 text-[14px] font-medium">{t.adminPanel}</span>
+          <ArrowUpRight size={16} className="text-subtle rtl:-scale-x-100" />
+        </a>
+      )}
 
       <div className="mx-6 mt-3 flex gap-2">
         <Button variant="primary" className="flex-1" icon={<Pencil size={15} />} onClick={() => openMe(true)}>

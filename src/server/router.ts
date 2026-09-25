@@ -9,6 +9,7 @@ import { cityById } from '../data/geo'
 import { getDb, schema } from './db'
 import { emailEnabled, sendLoginCode } from './email'
 import { googleEnabled } from './auth/google'
+import { adminEmails, isAdminEmail, listDesigners, listReports, overview } from './admin'
 
 type Ctx = { headers: Headers }
 const os = implement(contract).$context<Ctx>()
@@ -39,6 +40,7 @@ async function accountOf(user: UserRow): Promise<Account> {
     emailVerified: user.emailVerified,
     hidden: p?.hidden ?? false,
     profile: p ? toDesigner(p) : null,
+    isAdmin: isAdminEmail(user.email),
   }
 }
 
@@ -48,6 +50,14 @@ async function currentUser(headers: Headers): Promise<UserRow | null> {
   const row = await (await getDb()).select({ user: users }).from(sessions).innerJoin(users, eq(sessions.userId, users.id)).where(eq(sessions.token, token)).get()
   return row?.user ?? null
 }
+
+/** Admin procedures: a signed-in person whose email is listed in ADMIN_EMAILS. */
+const adminOnly = os.middleware(async ({ context, next }) => {
+  const user = await currentUser(context.headers)
+  if (!user) throw new ORPCError('UNAUTHORIZED')
+  if (!user.emailVerified || !isAdminEmail(user.email)) throw new ORPCError('FORBIDDEN', { message: 'Not an admin' })
+  return next({ context: { admin: user } })
+})
 
 /** Procedures below require a signed-in person with a confirmed email. */
 const authed = os.middleware(async ({ context, next }) => {
@@ -92,7 +102,7 @@ export const router = os.router({
   },
 
   auth: {
-    config: os.auth.config.handler(() => ({ googleOAuth: googleEnabled(), emailDelivery: emailEnabled() })),
+    config: os.auth.config.handler(() => ({ googleOAuth: googleEnabled(), emailDelivery: emailEnabled(), adminConfigured: adminEmails().length > 0 })),
     requestCode: os.auth.requestCode.handler(async ({ input }) => {
       const db = await getDb()
       const email = input.email.toLowerCase()
@@ -187,6 +197,8 @@ export const router = os.router({
       return accountOf(context.user)
     }),
     approveDemo: os.profile.approveDemo.use(authed).handler(async ({ context }) => {
+      // Once real admins exist, verification only happens through the admin panel.
+      if (adminEmails().length) throw new ORPCError('FORBIDDEN', { message: 'Verification is reviewed by admins' })
       await (await getDb())
         .update(profiles)
         .set({ verification: 'verified' })
@@ -196,6 +208,36 @@ export const router = os.router({
     remove: os.profile.remove.use(authed).handler(async ({ context }) => {
       // Deleting the user cascades to their profile, sessions and reports about them.
       await (await getDb()).delete(users).where(eq(users.id, context.user.id))
+      return { ok: true as const }
+    }),
+  },
+
+  admin: {
+    overview: os.admin.overview.use(adminOnly).handler(() => overview()),
+    designers: os.admin.designers.use(adminOnly).handler(({ input }) => listDesigners(input)),
+    setVerification: os.admin.setVerification.use(adminOnly).handler(async ({ input }) => {
+      await (await getDb()).update(profiles).set({ verification: input.verification }).where(eq(profiles.id, input.id))
+      return { ok: true as const }
+    }),
+    setHidden: os.admin.setHidden.use(adminOnly).handler(async ({ input }) => {
+      await (await getDb()).update(profiles).set({ hidden: input.hidden }).where(eq(profiles.id, input.id))
+      return { ok: true as const }
+    }),
+    deleteProfile: os.admin.deleteProfile.use(adminOnly).handler(async ({ input }) => {
+      const db = await getDb()
+      const p = await db.select({ userId: profiles.userId }).from(profiles).where(eq(profiles.id, input.id)).get()
+      if (!p) throw new ORPCError('NOT_FOUND')
+      // Removing the user cascades to the profile, sessions and reports.
+      await db.delete(users).where(eq(users.id, p.userId))
+      return { ok: true as const }
+    }),
+    reports: os.admin.reports.use(adminOnly).handler(({ input }) => listReports(input.status)),
+    resolveReport: os.admin.resolveReport.use(adminOnly).handler(async ({ input, context }) => {
+      const open = input.status === 'open'
+      await (await getDb())
+        .update(reports)
+        .set({ status: input.status, resolvedAt: open ? null : new Date(), resolvedBy: open ? null : context.admin.email })
+        .where(eq(reports.id, input.id))
       return { ok: true as const }
     }),
   },

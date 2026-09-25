@@ -66,4 +66,8 @@ export const reports = sqliteTable('reports', {
   reason: text('reason').notNull(),
   note: text('note'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  /** open → dismissed (no action needed) or actioned (profile hidden/removed) by an admin. */
+  status: text('status', { enum: ['open', 'dismissed', 'actioned'] }).notNull().default('open'),
+  resolvedAt: integer('resolved_at', { mode: 'timestamp_ms' }),
+  resolvedBy: text('resolved_by'),
 })

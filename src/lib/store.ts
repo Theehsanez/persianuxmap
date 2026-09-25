@@ -20,7 +20,7 @@ type State = {
   /** Set when the first API load fails, so the loading screen can say so instead of spinning forever. */
   loadError: string | null
   /** Which sign-in methods the server has live (real Google OAuth, real email delivery). */
-  authConfig: { googleOAuth: boolean; emailDelivery: boolean }
+  authConfig: { googleOAuth: boolean; emailDelivery: boolean; adminConfigured?: boolean }
   /** Set after returning from Google without a profile yet: onboarding continues from the basics step. */
   onboardingPrefill: { provider: 'google'; email: string; name?: string; photo?: string } | null
   account: Account | null
