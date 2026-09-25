@@ -234,15 +234,19 @@ export const router = os.router({
       await (await getDb()).update(profiles).set({ hidden: input.hidden }).where(eq(profiles.id, input.id))
       return { ok: true as const }
     }),
-    deleteProfile: os.admin.deleteProfile.use(adminOnly).handler(async ({ input }) => {
+    deleteProfile: os.admin.deleteProfile.use(adminOnly).handler(async ({ input, context }) => {
       const db = await getDb()
       const p = await db.select({ userId: profiles.userId }).from(profiles).where(eq(profiles.id, input.id)).get()
       if (!p) throw new ORPCError('NOT_FOUND')
+      // Deleting your own account would also destroy the session doing the deleting.
+      if (p.userId === context.admin.id) throw new ORPCError('FORBIDDEN', { message: "You can't delete your own account" })
       // Removing the user cascades to the profile, sessions and reports.
       await db.delete(users).where(eq(users.id, p.userId))
       return { ok: true as const }
     }),
-    deleteProfiles: os.admin.deleteProfiles.use(adminOnly).handler(async ({ input }) => ({ ok: true as const, count: await deleteProfiles(input.ids) })),
+    deleteProfiles: os.admin.deleteProfiles
+      .use(adminOnly)
+      .handler(async ({ input, context }) => ({ ok: true as const, count: await deleteProfiles(input.ids, context.admin.id) })),
     reports: os.admin.reports.use(adminOnly).handler(({ input }) => listReports(input.status)),
     resolveReport: os.admin.resolveReport.use(adminOnly).handler(async ({ input, context }) => {
       const open = input.status === 'open'

@@ -116,6 +116,7 @@ const T = {
     clearSelection: 'Clear selection',
     deleteSelected: 'Delete selected',
     confirmDeleteSelected: (n: string) => `Delete ${n} permanently?`,
+    selfNote: "You can't delete your own account",
   },
   fa: {
     admin: 'مدیریت',
@@ -196,6 +197,7 @@ const T = {
     clearSelection: 'لغو انتخاب',
     deleteSelected: 'حذف موارد انتخاب‌شده',
     confirmDeleteSelected: (n: string) => `${n} مورد برای همیشه حذف شود؟`,
+    selfNote: 'نمی‌توانید حساب خودتان را حذف کنید',
   },
 }
 type Dict = (typeof T)['en']
@@ -376,7 +378,7 @@ export default function AdminApp() {
         {tab === 'overview' && <Overview data={overview} onRefresh={loadOverview} goTo={switchTab} />}
         {tab === 'verification' && <VerificationQueue act={act} />}
         {tab === 'reports' && <Reports act={act} />}
-        {tab === 'designers' && <Designers act={act} />}
+        {tab === 'designers' && <Designers act={act} meEmail={me.email} />}
       </main>
       <Toasts />
     </div>
@@ -791,10 +793,10 @@ function Reports({ act }: { act: Act }) {
 
 // ————————————————————————————————— designers table
 
-const PAGE = 50
+const PAGE = 1000
 type Filter = 'all' | 'pending' | 'verified' | 'email' | 'hidden' | 'reported' | 'real'
 
-function Designers({ act }: { act: Act }) {
+function Designers({ act, meEmail }: { act: Act; meEmail: string }) {
   const { t, n, date, locale } = useAdminT()
   const [q, setQ] = useState('')
   const [debounced, setDebounced] = useState('')
@@ -818,7 +820,8 @@ function Designers({ act }: { act: Act }) {
 
   const filters = useMemo(() => Object.keys(t.filters) as Filter[], [t])
 
-  const pageIds = useMemo(() => data?.items.map((d) => d.id) ?? [], [data])
+  // Excludes your own row: deleting your own account would also destroy the session doing the deleting.
+  const pageIds = useMemo(() => data?.items.filter((d) => d.email !== meEmail).map((d) => d.id) ?? [], [data, meEmail])
   const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id))
   const toggle = (id: string) =>
     setSelected((s) => {
@@ -910,10 +913,19 @@ function Designers({ act }: { act: Act }) {
             <tbody>
               {data.items.map((d) => {
                 const city = cityById[d.cityId]
+                const isSelf = d.email === meEmail
                 return (
                   <tr key={d.id} className="flex flex-col gap-2 border-t border-line p-4 first:border-t-0 md:table-row md:p-0 md:first:border-t [&>td]:md:px-4 [&>td]:md:py-3">
                     <td>
-                      <input type="checkbox" checked={selected.has(d.id)} onChange={() => toggle(d.id)} aria-label={d.name[locale] || d.name.en} className="size-4 accent-white" />
+                      <input
+                        type="checkbox"
+                        checked={selected.has(d.id)}
+                        onChange={() => toggle(d.id)}
+                        disabled={isSelf}
+                        title={isSelf ? t.selfNote : undefined}
+                        aria-label={d.name[locale] || d.name.en}
+                        className="size-4 accent-white disabled:opacity-30"
+                      />
                     </td>
                     <td>
                       <div className="flex items-center gap-3">
@@ -965,7 +977,9 @@ function Designers({ act }: { act: Act }) {
                         <Button size="sm" variant="ghost" onClick={() => run(async () => (await api()).admin.setHidden({ id: d.id, hidden: !d.hidden }))}>
                           {d.hidden ? t.show : t.hide}
                         </Button>
-                        <ConfirmButton label={t.delete} confirm={t.confirmDelete} onConfirm={() => run(async () => (await api()).admin.deleteProfile({ id: d.id }))} iconOnly />
+                        {!isSelf && (
+                          <ConfirmButton label={t.delete} confirm={t.confirmDelete} onConfirm={() => run(async () => (await api()).admin.deleteProfile({ id: d.id }))} iconOnly />
+                        )}
                       </div>
                     </td>
                   </tr>

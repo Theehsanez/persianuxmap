@@ -159,13 +159,18 @@ export async function listDesignerIds(input: { q?: string; filter: string }) {
   return filtered.map((r) => r.p.id)
 }
 
-/** Deletes the users behind these profile ids (cascades to their profiles, sessions and reports). Returns how many were found and removed. */
-export async function deleteProfiles(ids: string[]) {
+/**
+ * Deletes the users behind these profile ids (cascades to their profiles, sessions and reports).
+ * `excludeUserId` (the acting admin's own id) is silently skipped — deleting your own account would
+ * also destroy the session doing the deleting. Returns how many were actually removed.
+ */
+export async function deleteProfiles(ids: string[], excludeUserId?: string) {
   const db = await getDb()
   const rows = await db.select({ userId: profiles.userId }).from(profiles).where(inArray(profiles.id, ids))
-  if (!rows.length) return 0
-  await db.delete(users).where(inArray(users.id, rows.map((r) => r.userId)))
-  return rows.length
+  const userIds = [...new Set(rows.map((r) => r.userId))].filter((id) => id !== excludeUserId)
+  if (!userIds.length) return 0
+  await db.delete(users).where(inArray(users.id, userIds))
+  return userIds.length
 }
 
 export async function listReports(status: string): Promise<AdminReportT[]> {
