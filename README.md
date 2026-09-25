@@ -35,10 +35,17 @@ On first start the database is created, migrated and seeded with ~236 demo desig
 | `DATABASE_URL` | `file:./data/persianuxmap.db` | `file:` path locally, or `libsql://…` for Turso |
 | `DATABASE_AUTH_TOKEN` | — | Turso database token |
 | `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` | — | Also accepted. Vercel's Turso integration sets these automatically. |
-| `EXPOSE_EMAIL_CODES` | `true` | No mail provider is wired up yet, so the API returns the code and the "demo inbox" shows it. Set this to `false` once real email is sending. |
+| `RESEND_API_KEY` | — | Turns on real email delivery of login codes via [Resend](https://resend.com) |
+| `EMAIL_FROM` | `Persian UX Map <onboarding@resend.dev>` | Sender; must use a domain verified in Resend |
+| `EXPOSE_EMAIL_CODES` | `true` without Resend, `false` with it | Return the code to the browser (the "demo inbox") |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Turns on real “Continue with Google” (OAuth). Without them the Google button is simulated. |
+| `APP_URL` | request origin | Public site URL, used for the Google redirect URI |
 | `PORT` | `3000` | used by `npm start` |
 
-**Not real yet:** "Continue with Google" is simulated (real OAuth needs client credentials), and email codes are not actually emailed yet (see `EXPOSE_EMAIL_CODES`).
+**Email & Google sign-in:** both run in demo mode until you add their keys:
+
+- **Email (Resend):** create an API key, verify your sending domain (DNS records in Resend), then set `RESEND_API_KEY` and `EMAIL_FROM`. The code is then only emailed, and the demo inbox disappears.
+- **Google:** in Google Cloud Console → APIs & Services → Credentials, create an OAuth client ID (Web application). Add the redirect URI `https://<your-site>/api/auth/google/callback` (plus `http://localhost:5173/api/auth/google/callback` for development), then set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. When these are set, the simulated Google login is switched off.
 
 ### Static demo (GitHub Pages)
 

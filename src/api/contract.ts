@@ -62,9 +62,11 @@ export const contract = {
   },
   auth: {
     /** Send a 6-digit code. Without a mail provider configured, the code is returned so the demo inbox can show it. */
+    /** Which sign-in methods are live, so the UI can use real Google OAuth or fall back to the demo flow. */
+    config: oc.output(z.object({ googleOAuth: z.boolean(), emailDelivery: z.boolean() })),
     requestCode: oc.input(z.object({ email: z.email() })).output(z.object({ sent: z.literal(true), devCode: z.string().optional() })),
     verifyCode: oc.input(z.object({ email: z.email(), code: z.string().length(6) })).output(Session),
-    /** Simulated Google sign-in (demo): real OAuth needs client credentials. */
+    /** Simulated Google sign-in for the demo. Disabled once real Google OAuth is configured (see /api/auth/google). */
     google: oc.output(Session),
     me: oc.output(AccountSchema.nullable()),
     signOut: oc.output(z.object({ ok: z.literal(true) })),

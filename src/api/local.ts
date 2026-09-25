@@ -71,6 +71,7 @@ export const localRouter = os.router({
     }),
   },
   auth: {
+    config: os.auth.config.handler(() => ({ googleOAuth: false, emailDelivery: false })),
     requestCode: os.auth.requestCode.handler(({ input }) => {
       const s = load()
       const code = randomCode()

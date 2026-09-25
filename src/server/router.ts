@@ -7,6 +7,8 @@ import type { Designer } from '../data/designers'
 import type { RoleId, SkillId } from '../data/taxonomy'
 import { cityById } from '../data/geo'
 import { getDb, schema } from './db'
+import { emailEnabled, sendLoginCode } from './email'
+import { googleEnabled } from './auth/google'
 
 type Ctx = { headers: Headers }
 const os = implement(contract).$context<Ctx>()
@@ -55,7 +57,7 @@ const authed = os.middleware(async ({ context, next }) => {
   return next({ context: { user } })
 })
 
-async function openSession(email: string, provider: 'google' | 'email') {
+export async function openSession(email: string, provider: 'google' | 'email') {
   const db = await getDb()
   let user = await db.select().from(users).where(eq(users.email, email)).get()
   if (!user) {
@@ -72,8 +74,10 @@ async function openSession(email: string, provider: 'google' | 'email') {
 
 const CODE_TTL = 10 * 60 * 1000
 const MAX_ATTEMPTS = 5
-// No mail provider is wired up yet, so by default the code is returned to the client for the demo inbox.
-const exposeCodes = process.env.EXPOSE_EMAIL_CODES !== 'false'
+const RESEND_COOLDOWN = 30 * 1000
+// Without a mail provider the code is handed back to the client (demo inbox). With Resend configured it
+// is only ever emailed — unless EXPOSE_EMAIL_CODES=true is set explicitly for testing.
+const exposeCodes = () => (emailEnabled() ? process.env.EXPOSE_EMAIL_CODES === 'true' : process.env.EXPOSE_EMAIL_CODES !== 'false')
 
 export const router = os.router({
   designers: {
@@ -88,15 +92,28 @@ export const router = os.router({
   },
 
   auth: {
+    config: os.auth.config.handler(() => ({ googleOAuth: googleEnabled(), emailDelivery: emailEnabled() })),
     requestCode: os.auth.requestCode.handler(async ({ input }) => {
+      const db = await getDb()
       const email = input.email.toLowerCase()
+      // Throttle: one code per address every 30s (the UI's resend button waits the same).
+      const prev = await db.select().from(emailCodes).where(eq(emailCodes.email, email)).get()
+      if (prev && prev.expiresAt.getTime() - CODE_TTL > Date.now() - RESEND_COOLDOWN) throw new ORPCError('TOO_MANY_REQUESTS', { message: 'Please wait before requesting another code' })
       const code = randomCode()
-      await (await getDb())
+      const expiresAt = new Date(Date.now() + CODE_TTL)
+      await db
         .insert(emailCodes)
-        .values({ email, code, expiresAt: new Date(Date.now() + CODE_TTL), attempts: 0 })
-        .onConflictDoUpdate({ target: emailCodes.email, set: { code, expiresAt: new Date(Date.now() + CODE_TTL), attempts: 0 } })
-      // TODO: send `code` by email once a mail provider is configured.
-      return { sent: true as const, devCode: exposeCodes ? code : undefined }
+        .values({ email, code, expiresAt, attempts: 0 })
+        .onConflictDoUpdate({ target: emailCodes.email, set: { code, expiresAt, attempts: 0 } })
+      if (emailEnabled()) {
+        try {
+          await sendLoginCode(email, code)
+        } catch (e) {
+          console.error('[email]', e)
+          throw new ORPCError('INTERNAL_SERVER_ERROR', { message: 'Could not send the email' })
+        }
+      }
+      return { sent: true as const, devCode: exposeCodes() ? code : undefined }
     }),
     verifyCode: os.auth.verifyCode.handler(async ({ input }) => {
       const db = await getDb()
@@ -110,7 +127,11 @@ export const router = os.router({
       await db.delete(emailCodes).where(eq(emailCodes.email, email))
       return openSession(email, 'email')
     }),
-    google: os.auth.google.handler(() => openSession('you@gmail.com', 'google')),
+    google: os.auth.google.handler(() => {
+      // The demo shortcut must not exist next to real Google sign-in: anyone could log in as you@gmail.com.
+      if (googleEnabled()) throw new ORPCError('FORBIDDEN', { message: 'Use /api/auth/google' })
+      return openSession('you@gmail.com', 'google')
+    }),
     me: os.auth.me.handler(async ({ context }) => {
       const user = await currentUser(context.headers)
       return user ? accountOf(user) : null

@@ -110,19 +110,31 @@ export function Onboarding() {
   const close = () => setOpen(false)
   useEscape(close, open)
 
-  // Reset when reopened
+  const prefill = useStore((s) => s.onboardingPrefill)
+  const googleOAuth = useStore((s) => s.authConfig.googleOAuth)
+
+  // Reset when reopened — or continue after returning from Google with name/photo filled in.
   useEffect(() => {
-    if (open) {
-      setStep(0)
-      setProvider(null)
-      setEmail('')
-      setEmailTouched(false)
-      setDraft(emptyDraft())
-      setTouched(false)
-      setCode('')
-      setVerified(false)
-      setInbox(false)
+    if (!open) return
+    setEmailTouched(false)
+    setTouched(false)
+    setCode('')
+    setInbox(false)
+    if (prefill) {
+      setProvider('google')
+      setEmail(prefill.email)
+      setVerified(true)
+      setDraft({ ...emptyDraft(), name: prefill.name ?? '', photo: prefill.photo })
+      setStep(1)
+      useStore.setState({ onboardingPrefill: null })
+      return
     }
+    setStep(0)
+    setProvider(null)
+    setEmail('')
+    setDraft(emptyDraft())
+    setVerified(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   useEffect(() => {
@@ -220,6 +232,11 @@ export function Onboarding() {
   const google = async () => {
     setProvider('google')
     setGoogleLoading(true)
+    if (googleOAuth) {
+      // Real Google sign-in: full-page redirect; we come back to /#auth=google&token=…
+      window.location.href = `${import.meta.env.BASE_URL}api/auth/google`
+      return
+    }
     const r = await call((a) => a.auth.google())
     setGoogleLoading(false)
     if (!r) return

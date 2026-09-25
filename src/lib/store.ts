@@ -19,6 +19,10 @@ type State = {
   designersLoaded: boolean
   /** Set when the first API load fails, so the loading screen can say so instead of spinning forever. */
   loadError: string | null
+  /** Which sign-in methods the server has live (real Google OAuth, real email delivery). */
+  authConfig: { googleOAuth: boolean; emailDelivery: boolean }
+  /** Set after returning from Google without a profile yet: onboarding continues from the basics step. */
+  onboardingPrefill: { provider: 'google'; email: string; name?: string; photo?: string } | null
   account: Account | null
   filters: Filters
   drawer: Drawer
@@ -82,6 +86,8 @@ export const useStore = create<State>((set, get) => ({
   designers: [],
   designersLoaded: false,
   loadError: null,
+  authConfig: { googleOAuth: false, emailDelivery: false },
+  onboardingPrefill: null,
   account: null,
   filters: EMPTY_FILTERS,
   drawer: null,
@@ -124,14 +130,22 @@ export const useStore = create<State>((set, get) => ({
   },
   init: async () => {
     set({ loadError: null })
+    const google = consumeGoogleRedirect()
     try {
       const client = await api()
-      const [designers, me] = await Promise.all([
+      const [designers, me, authConfig] = await Promise.all([
         client.designers.list(),
         session.get() ? client.auth.me().catch(() => null) : Promise.resolve(null),
+        client.auth.config().catch(() => get().authConfig),
       ])
-      set({ designers, designersLoaded: true })
+      set({ designers, designersLoaded: true, authConfig })
       get().setAccount(me)
+      if (google === 'error') get().toast(get().locale === 'fa' ? 'ورود با گوگل انجام نشد' : 'Google sign-in didn’t complete')
+      else if (google && me) {
+        // Back from Google: existing members land on their profile; new people continue onboarding.
+        if (me.profile) get().openMe()
+        else set({ onboardingPrefill: { provider: 'google', email: google.email, name: google.name, photo: google.picture }, onboardingOpen: true })
+      }
     } catch (e) {
       console.error('[api] initial load failed', e)
       set({ loadError: e instanceof Error ? e.message : String(e) })
@@ -146,6 +160,22 @@ export const useStore = create<State>((set, get) => ({
   setPulse: (pulseId) => set({ pulseId }),
   setMapReady: () => set({ mapReady: true }),
 }))
+
+/** Google sends people back with `#auth=google&token=…` (fragment: never reaches servers or logs). */
+function consumeGoogleRedirect(): { email: string; name?: string; picture?: string } | 'error' | null {
+  if (typeof window === 'undefined' || !window.location.hash) return null
+  const p = new URLSearchParams(window.location.hash.slice(1))
+  const clear = () => history.replaceState(null, '', window.location.pathname + window.location.search)
+  if (p.get('auth_error')) {
+    clear()
+    return 'error'
+  }
+  const token = p.get('token')
+  if (p.get('auth') !== 'google' || !token) return null
+  session.set(token)
+  clear()
+  return { email: p.get('email') ?? '', name: p.get('name') || undefined, picture: p.get('picture') || undefined }
+}
 
 /**
  * Everyone on the public map. The server list already contains me when I'm visible;
