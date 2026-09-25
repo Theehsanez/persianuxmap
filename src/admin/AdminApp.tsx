@@ -110,6 +110,12 @@ const T = {
     page: (a: string, b: string) => `${a}–${b}`,
     saved: 'Saved',
     failed: 'That didn’t work — try again',
+    selectAll: 'Select all',
+    selected: (n: string) => `${n} selected`,
+    selectAllMatching: (n: string) => `Select all ${n} matching results`,
+    clearSelection: 'Clear selection',
+    deleteSelected: 'Delete selected',
+    confirmDeleteSelected: (n: string) => `Delete ${n} permanently?`,
   },
   fa: {
     admin: 'مدیریت',
@@ -184,6 +190,12 @@ const T = {
     page: (a: string, b: string) => `${a}–${b}`,
     saved: 'ذخیره شد',
     failed: 'انجام نشد — دوباره تلاش کنید',
+    selectAll: 'انتخاب همه',
+    selected: (n: string) => `${n} مورد انتخاب شد`,
+    selectAllMatching: (n: string) => `انتخاب همه‌ی ${n} نتیجه`,
+    clearSelection: 'لغو انتخاب',
+    deleteSelected: 'حذف موارد انتخاب‌شده',
+    confirmDeleteSelected: (n: string) => `${n} مورد برای همیشه حذف شود؟`,
   },
 }
 type Dict = (typeof T)['en']
@@ -789,12 +801,14 @@ function Designers({ act }: { act: Act }) {
   const [filter, setFilter] = useState<Filter>('all')
   const [offset, setOffset] = useState(0)
   const [data, setData] = useState<{ items: AdminDesignerT[]; total: number } | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(q), 250)
     return () => clearTimeout(id)
   }, [q])
   useEffect(() => setOffset(0), [debounced, filter])
+  useEffect(() => setSelected(new Set()), [debounced, filter, offset])
   const load = useCallback(async () => setData(await (await api()).admin.designers({ q: debounced || undefined, filter, limit: PAGE, offset })), [debounced, filter, offset])
   useEffect(() => void load().catch(() => setData({ items: [], total: 0 })), [load])
 
@@ -803,6 +817,34 @@ function Designers({ act }: { act: Act }) {
   }
 
   const filters = useMemo(() => Object.keys(t.filters) as Filter[], [t])
+
+  const pageIds = useMemo(() => data?.items.map((d) => d.id) ?? [], [data])
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id))
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const next = new Set(s)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const toggleAllPage = () =>
+    setSelected((s) => {
+      const next = new Set(s)
+      if (allPageSelected) pageIds.forEach((id) => next.delete(id))
+      else pageIds.forEach((id) => next.add(id))
+      return next
+    })
+  const selectAllMatching = async () => {
+    const { ids } = await (await api()).admin.designerIds({ q: debounced || undefined, filter })
+    setSelected(new Set(ids))
+  }
+  const bulkDelete = async () => {
+    const ids = [...selected]
+    if (await act(async () => (await api()).admin.deleteProfiles({ ids }))) {
+      setSelected(new Set())
+      void load()
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -827,6 +869,22 @@ function Designers({ act }: { act: Act }) {
         ))}
       </div>
 
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-[13px]">
+          <span className="font-medium">{t.selected(n(selected.size))}</span>
+          {data && allPageSelected && selected.size < data.total && (
+            <button onClick={() => void selectAllMatching()} className="text-muted underline-offset-2 hover:text-text hover:underline">
+              {t.selectAllMatching(n(data.total))}
+            </button>
+          )}
+          <button onClick={() => setSelected(new Set())} className="text-muted hover:text-text">
+            {t.clearSelection}
+          </button>
+          <div className="flex-1" />
+          <ConfirmButton label={t.deleteSelected} confirm={t.confirmDeleteSelected(n(selected.size))} onConfirm={bulkDelete} />
+        </div>
+      )}
+
       {!data ? (
         <Skeletons />
       ) : data.items.length === 0 ? (
@@ -836,6 +894,9 @@ function Designers({ act }: { act: Act }) {
           <table className="w-full text-[13px]">
             <thead className="hidden bg-surface text-[12px] text-subtle md:table-header-group">
               <tr className="[&>th]:px-4 [&>th]:py-2.5 [&>th]:text-start [&>th]:font-medium">
+                <th className="w-10">
+                  <input type="checkbox" checked={allPageSelected} onChange={toggleAllPage} aria-label={t.selectAll} className="size-4 accent-white" />
+                </th>
                 <th>{t.cols.designer}</th>
                 <th>{t.cols.email}</th>
                 <th>{t.cols.city}</th>
@@ -851,6 +912,9 @@ function Designers({ act }: { act: Act }) {
                 const city = cityById[d.cityId]
                 return (
                   <tr key={d.id} className="flex flex-col gap-2 border-t border-line p-4 first:border-t-0 md:table-row md:p-0 md:first:border-t [&>td]:md:px-4 [&>td]:md:py-3">
+                    <td>
+                      <input type="checkbox" checked={selected.has(d.id)} onChange={() => toggle(d.id)} aria-label={d.name[locale] || d.name.en} className="size-4 accent-white" />
+                    </td>
                     <td>
                       <div className="flex items-center gap-3">
                         <Avatar d={d} size={34} />

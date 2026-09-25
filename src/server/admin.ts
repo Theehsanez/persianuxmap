@@ -112,7 +112,7 @@ export async function overview(): Promise<AdminOverviewT> {
   }
 }
 
-export async function listDesigners(input: { q?: string; filter: string; limit: number; offset: number }) {
+async function filteredDesignerRows(input: { q?: string; filter: string }) {
   const db = await getDb()
   const [rows, counts] = await Promise.all([db.select({ p: profiles, u: users }).from(profiles).innerJoin(users, eq(profiles.userId, users.id)), openReportCounts()])
   const q = input.q?.trim().toLowerCase()
@@ -142,10 +142,30 @@ export async function listDesigners(input: { q?: string; filter: string; limit: 
     })
     // Newest first — that's where review work is.
     .sort((a, b) => b.p.joinedAt.getTime() - a.p.joinedAt.getTime())
+  return { filtered, counts }
+}
+
+export async function listDesigners(input: { q?: string; filter: string; limit: number; offset: number }) {
+  const { filtered, counts } = await filteredDesignerRows(input)
   return {
     total: filtered.length,
     items: filtered.slice(input.offset, input.offset + input.limit).map((r) => toAdminDesigner(r, counts.get(r.p.id) ?? 0)),
   }
+}
+
+/** All ids matching a filter/search, unpaginated — for "select all N results". */
+export async function listDesignerIds(input: { q?: string; filter: string }) {
+  const { filtered } = await filteredDesignerRows(input)
+  return filtered.map((r) => r.p.id)
+}
+
+/** Deletes the users behind these profile ids (cascades to their profiles, sessions and reports). Returns how many were found and removed. */
+export async function deleteProfiles(ids: string[]) {
+  const db = await getDb()
+  const rows = await db.select({ userId: profiles.userId }).from(profiles).where(inArray(profiles.id, ids))
+  if (!rows.length) return 0
+  await db.delete(users).where(inArray(users.id, rows.map((r) => r.userId)))
+  return rows.length
 }
 
 export async function listReports(status: string): Promise<AdminReportT[]> {

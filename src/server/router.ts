@@ -9,7 +9,7 @@ import { cityById } from '../data/geo'
 import { getDb, schema } from './db'
 import { emailEnabled, sendLoginCode } from './email'
 import { googleEnabled } from './auth/google'
-import { adminEmails, isAdminEmail, listDesigners, listReports, overview } from './admin'
+import { adminEmails, deleteProfiles, isAdminEmail, listDesignerIds, listDesigners, listReports, overview } from './admin'
 
 type Ctx = { headers: Headers }
 const os = implement(contract).$context<Ctx>()
@@ -225,6 +225,7 @@ export const router = os.router({
   admin: {
     overview: os.admin.overview.use(adminOnly).handler(() => overview()),
     designers: os.admin.designers.use(adminOnly).handler(({ input }) => listDesigners(input)),
+    designerIds: os.admin.designerIds.use(adminOnly).handler(async ({ input }) => ({ ids: await listDesignerIds(input) })),
     setVerification: os.admin.setVerification.use(adminOnly).handler(async ({ input }) => {
       await (await getDb()).update(profiles).set({ verification: input.verification }).where(eq(profiles.id, input.id))
       return { ok: true as const }
@@ -241,6 +242,7 @@ export const router = os.router({
       await db.delete(users).where(eq(users.id, p.userId))
       return { ok: true as const }
     }),
+    deleteProfiles: os.admin.deleteProfiles.use(adminOnly).handler(async ({ input }) => ({ ok: true as const, count: await deleteProfiles(input.ids) })),
     reports: os.admin.reports.use(adminOnly).handler(({ input }) => listReports(input.status)),
     resolveReport: os.admin.resolveReport.use(adminOnly).handler(async ({ input, context }) => {
       const open = input.status === 'open'

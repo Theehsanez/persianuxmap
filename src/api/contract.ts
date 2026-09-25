@@ -109,9 +109,14 @@ export const adminContract = {
       }),
     )
     .output(z.object({ items: z.array(AdminDesigner), total: z.number() })),
+  /** All designer ids matching a filter/search, unpaginated — powers "select all N results" in the admin table. */
+  designerIds: oc
+    .input(z.object({ q: z.string().max(100).optional(), filter: z.enum(['all', 'pending', 'verified', 'email', 'hidden', 'reported', 'real']).default('all') }))
+    .output(z.object({ ids: z.array(z.string()) })),
   setVerification: oc.input(z.object({ id: z.string(), verification: z.enum(['email', 'verified']) })).output(z.object({ ok: z.literal(true) })),
   setHidden: oc.input(z.object({ id: z.string(), hidden: z.boolean() })).output(z.object({ ok: z.literal(true) })),
   deleteProfile: oc.input(z.object({ id: z.string() })).output(z.object({ ok: z.literal(true) })),
+  deleteProfiles: oc.input(z.object({ ids: z.array(z.string()).min(1).max(2000) })).output(z.object({ ok: z.literal(true), count: z.number() })),
   reports: oc.input(z.object({ status: z.enum(['open', 'dismissed', 'actioned', 'all']).default('open') })).output(z.array(AdminReport)),
   resolveReport: oc.input(z.object({ id: z.string(), status: z.enum(['dismissed', 'actioned', 'open']) })).output(z.object({ ok: z.literal(true) })),
 }
