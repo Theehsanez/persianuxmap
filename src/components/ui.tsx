@@ -101,8 +101,9 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
       onClick={() => onChange(!checked)}
       className={`relative h-6 w-10 shrink-0 rounded-full transition-colors duration-200 ${checked ? 'bg-accent' : 'bg-white/15'}`}
     >
+      {/* On: dark knob on the white track (the accent is white, so a white knob would disappear). */}
       <span
-        className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-[inset-inline-start] duration-200 ${checked ? 'start-[18px]' : 'start-0.5'}`}
+        className={`absolute top-0.5 size-5 rounded-full shadow transition-[inset-inline-start,background-color] duration-200 ${checked ? 'start-[18px] bg-bg' : 'start-0.5 bg-white'}`}
       />
     </button>
   )
@@ -199,9 +200,19 @@ export function Sheet({
           transition: start.current === null ? 'height 0.35s var(--ease), transform 0.3s var(--ease)' : 'none',
         }}
       >
-        <div className="flex shrink-0 touch-none cursor-grab flex-col items-center pt-2.5 pb-1" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
-          <span className="h-1 w-10 rounded-full bg-white/20" />
-          <span className="sr-only">{t.close}</span>
+        <div className="relative flex h-11 shrink-0 items-center justify-center">
+          {/* Drag handle: pull down to close, up to expand. */}
+          <div className="absolute inset-0 touch-none cursor-grab" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />
+          <span className="pointer-events-none h-1 w-10 rounded-full bg-white/20" />
+          {/* An explicit close button — dragging isn't obvious to everyone. */}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t.close}
+            className="absolute end-2 top-1.5 grid size-9 place-items-center rounded-full bg-white/[0.06] text-muted transition-colors active:scale-95 hover:bg-white/10 hover:text-text"
+          >
+            <X size={17} />
+          </button>
         </div>
         {header}
         <div className="scroll-thin min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(env(safe-area-inset-bottom),16px)]">{children}</div>
