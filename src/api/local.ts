@@ -130,9 +130,11 @@ export const localRouter = os.router({
   admin: {
     overview: os.admin.overview.handler(() => noAdmin()),
     designers: os.admin.designers.handler(() => noAdmin()),
+    designerIds: os.admin.designerIds.handler(() => noAdmin()),
     setVerification: os.admin.setVerification.handler(() => noAdmin()),
     setHidden: os.admin.setHidden.handler(() => noAdmin()),
     deleteProfile: os.admin.deleteProfile.handler(() => noAdmin()),
+    deleteProfiles: os.admin.deleteProfiles.handler(() => noAdmin()),
     reports: os.admin.reports.handler(() => noAdmin()),
     resolveReport: os.admin.resolveReport.handler(() => noAdmin()),
   },
