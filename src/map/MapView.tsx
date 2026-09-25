@@ -197,6 +197,7 @@ const minZoomFor = (width: number) => Math.max(0.3, Math.log2(width / 512) + 0.0
 
 export function MapView() {
   const el = useRef<HTMLDivElement>(null)
+  const dim = useRef<HTMLDivElement>(null)
   const [map, setLocalMap] = useState<MLMap | null>(null)
   const setMapReady = useStore((s) => s.setMapReady)
   const locale = useStore((s) => s.locale)
@@ -249,6 +250,21 @@ export function MapView() {
 
   useEffect(() => {
     if (!map) return
+    const onZoom = () => {
+      if (!dim.current) return
+      const z = map.getZoom()
+      const t = Math.min(1, Math.max(0, (z - 3) / 6)) // 0 at world view → 1 at city level (z9+)
+      dim.current.style.opacity = String(0.2 + t * 0.35)
+    }
+    onZoom()
+    map.on('zoom', onZoom)
+    return () => {
+      map.off('zoom', onZoom)
+    }
+  }, [map])
+
+  useEffect(() => {
+    if (!map) return
     for (const id of LABEL_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, 'text-field', labelField(locale))
   }, [map, locale])
 
@@ -281,6 +297,9 @@ export function MapView() {
   return (
     <div className="absolute inset-0">
       <div ref={el} className="h-full w-full" aria-label="World map of designers" />
+      {/* Dark scrim between the basemap and the markers: keeps streets/labels as quiet context so the
+          bubbles, avatars and network lines stand out. Stronger as you zoom in and more detail appears. */}
+      <div ref={dim} className="pointer-events-none absolute inset-0 bg-black transition-opacity duration-300" style={{ opacity: 0.2 }} />
       <div className="map-vignette pointer-events-none absolute inset-0" />
       {map && <MarkerLayer map={map} designers={filtered} />}
     </div>

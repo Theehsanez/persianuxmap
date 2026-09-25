@@ -33,7 +33,7 @@ export function splitProgress(zoom: number, lat: number, n: number) {
 
 /** Zoom at which a city is comfortably split. Used when the user clicks a cluster. */
 export function splitZoom(lat: number, n: number) {
-  const targetPx = neededPx(n) * 1.25
+  const targetPx = neededPx(n) * 1.7 // generous, so people arrive already separated (no sub-clusters)
   return Math.min(12.5, Math.max(6, Math.log2((targetPx * 40075 * Math.cos((lat * Math.PI) / 180)) / (512 * cityRadiusKm(n)))))
 }
 
