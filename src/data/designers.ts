@@ -130,10 +130,10 @@ const ROLE_SKILLS: Record<RoleId, SkillId[]> = {
   system: ['systems', 'figma', 'a11y', 'ui', 'responsive'],
   interaction: ['prototyping', 'motion', 'framer', 'figma', 'ui'],
   writer: ['ux', 'ia', 'flow', 'a11y', 'research'],
-  other: ['product', 'figma', 'webflow', 'ai'],
+  other: ['product', 'graphic', 'figma', 'webflow', 'ai'],
 }
 
-const ALL_SKILLS: SkillId[] = ['figma', 'ui', 'ux', 'product', 'research', 'wireframing', 'prototyping', 'systems', 'flow', 'ia', 'responsive', 'a11y', 'testing', 'motion', 'framer', 'webflow', 'ai']
+const ALL_SKILLS: SkillId[] = ['figma', 'ui', 'ux', 'product', 'graphic', 'research', 'wireframing', 'prototyping', 'systems', 'flow', 'ia', 'responsive', 'a11y', 'testing', 'motion', 'framer', 'webflow', 'ai']
 
 const SENIORITY: { en: string; fa: string }[] = [
   { en: '', fa: '' },
