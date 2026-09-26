@@ -20,6 +20,7 @@ export const SKILLS = [
   { id: 'ui', en: 'UI Design', fa: 'طراحی رابط کاربری' },
   { id: 'ux', en: 'UX Design', fa: 'طراحی تجربه کاربری' },
   { id: 'product', en: 'Product Design', fa: 'طراحی محصول' },
+  { id: 'graphic', en: 'Graphic Design', fa: 'طراحی گرافیک' },
   { id: 'research', en: 'UX Research', fa: 'پژوهش تجربه کاربری' },
   { id: 'wireframing', en: 'Wireframing', fa: 'وایرفریم' },
   { id: 'prototyping', en: 'Prototyping', fa: 'نمونه‌سازی' },
