@@ -2,9 +2,9 @@ import { implement, ORPCError } from '@orpc/server'
 import { and, eq } from 'drizzle-orm'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { contract, type Account } from '../api/contract'
-import { designerFromInput, randomCode, socialHandle } from '../api/shared'
+import { designerFromInput, liveSkills, liveTools, randomCode, socialHandle } from '../api/shared'
 import type { Designer } from '../data/designers'
-import type { RoleId, SkillId } from '../data/taxonomy'
+import type { RoleId } from '../data/taxonomy'
 import { cityById } from '../data/geo'
 import { getDb, schema } from './db'
 import { emailEnabled, sendLoginCode } from './email'
@@ -24,7 +24,8 @@ const toDesigner = (p: ProfileRow): Designer => ({
   role: p.role as RoleId,
   title: { en: p.titleEn, fa: p.titleFa },
   cityId: p.cityId,
-  skills: p.skills as SkillId[],
+  skills: liveSkills(p.skills),
+  tools: liveTools(p.tools ?? []),
   bio: { en: p.bioEn, fa: p.bioFa },
   links: {
     linkedin: p.linkedin ?? undefined,
@@ -183,6 +184,7 @@ export const router = os.router({
         bioEn: d.bio.en,
         bioFa: d.bio.fa,
         skills: d.skills,
+        tools: d.tools,
         linkedin: d.links.linkedin ?? null,
         portfolio: d.links.portfolio ?? null,
         website: d.links.website ?? null,

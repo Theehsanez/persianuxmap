@@ -2,7 +2,7 @@ import { Compass, Languages, MapPinPlus, SlidersHorizontal, UserRound, X } from 
 import { useStore } from '../lib/store'
 import { useT } from '../lib/i18n'
 import { filterCount, useFilteredDesigners, usePublicDesigners, useStats } from '../lib/data'
-import { roleById, skillById } from '../data/taxonomy'
+import { roleById, skillById, toolById } from '../data/taxonomy'
 import { cityById, countryByCode } from '../data/geo'
 import { Avatar } from './Avatar'
 import { SearchBox } from './SearchBox'
@@ -111,6 +111,7 @@ export function MobileTopBar() {
     ...(filters.q ? [{ key: 'q', label: `“${filters.q}”`, remove: () => setFilters({ q: '' }) }] : []),
     ...filters.roles.map((r) => ({ key: 'r' + r, label: roleById[r][locale], remove: () => toggle('roles', r) })),
     ...filters.skills.map((s) => ({ key: 's' + s, label: skillById[s][locale], remove: () => toggle('skills', s) })),
+    ...filters.tools.map((s) => ({ key: 't' + s, label: toolById[s][locale], remove: () => toggle('tools', s) })),
     ...filters.countries.map((c) => ({ key: 'c' + c, label: `${countryByCode[c]?.flag} ${countryByCode[c]?.[locale]}`, remove: () => toggle('countries', c) })),
     ...filters.cities.map((c) => ({ key: 'y' + c, label: cityById[c][locale], remove: () => toggle('cities', c) })),
   ]

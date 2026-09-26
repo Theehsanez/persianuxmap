@@ -1,4 +1,4 @@
-import type { L10n, RoleId, SkillId } from './taxonomy'
+import type { L10n, RoleId, SkillId, ToolId } from './taxonomy'
 import { ROLES } from './taxonomy'
 
 export type Verification = 'unverified' | 'email' | 'pending' | 'verified'
@@ -10,6 +10,7 @@ export type Designer = {
   title: L10n
   cityId: string
   skills: SkillId[]
+  tools: ToolId[]
   bio: L10n
   links: { linkedin?: string; portfolio?: string; website?: string; instagram?: string; telegram?: string }
   joined: string // ISO date
@@ -122,18 +123,34 @@ const BIOS: Record<string, ((a: L10n, b: L10n) => L10n)[]> = {
 }
 
 const ROLE_SKILLS: Record<RoleId, SkillId[]> = {
-  ui: ['figma', 'ui', 'responsive', 'prototyping', 'motion', 'systems'],
-  ux: ['ux', 'wireframing', 'flow', 'ia', 'testing', 'figma'],
-  uiux: ['figma', 'ui', 'ux', 'wireframing', 'prototyping', 'responsive'],
-  product: ['figma', 'product', 'ux', 'systems', 'prototyping', 'research'],
+  ui: ['ui', 'responsive', 'prototyping', 'motion', 'systems'],
+  ux: ['ux', 'wireframing', 'flow', 'ia', 'testing'],
+  uiux: ['ui', 'ux', 'wireframing', 'prototyping', 'responsive'],
+  product: ['product', 'ux', 'systems', 'prototyping', 'research'],
   research: ['research', 'testing', 'ia', 'flow', 'ux'],
-  system: ['systems', 'figma', 'a11y', 'ui', 'responsive'],
-  interaction: ['prototyping', 'motion', 'framer', 'figma', 'ui'],
+  system: ['systems', 'a11y', 'ui', 'responsive'],
+  interaction: ['prototyping', 'motion', 'ui'],
   writer: ['ux', 'ia', 'flow', 'a11y', 'research'],
-  other: ['product', 'graphic', 'figma', 'webflow', 'ai'],
+  other: ['product', 'graphic'],
 }
 
-const ALL_SKILLS: SkillId[] = ['figma', 'ui', 'ux', 'product', 'graphic', 'research', 'wireframing', 'prototyping', 'systems', 'flow', 'ia', 'responsive', 'a11y', 'testing', 'motion', 'framer', 'webflow', 'ai']
+const ROLE_TOOLS: Record<RoleId, ToolId[]> = {
+  ui: ['figma', 'sketch', 'adobexd', 'principle'],
+  ux: ['figma', 'miro', 'notion'],
+  uiux: ['figma', 'sketch', 'adobexd', 'invision'],
+  product: ['figma', 'notion', 'miro', 'ai'],
+  research: ['miro', 'notion', 'figma'],
+  system: ['figma', 'storybook', 'zeplin'],
+  interaction: ['framer', 'principle', 'protopie', 'figma'],
+  writer: ['notion', 'figma'],
+  other: ['figma', 'webflow', 'canva', 'ai', 'illustrator', 'photoshop'],
+}
+
+const ALL_SKILLS: SkillId[] = ['ui', 'ux', 'product', 'graphic', 'research', 'wireframing', 'prototyping', 'systems', 'flow', 'ia', 'responsive', 'a11y', 'testing', 'motion']
+const ALL_TOOLS: ToolId[] = [
+  'figma', 'sketch', 'adobexd', 'photoshop', 'illustrator', 'aftereffects', 'framer', 'webflow',
+  'invision', 'principle', 'protopie', 'miro', 'zeplin', 'notion', 'canva', 'storybook', 'marvel', 'ai',
+]
 
 const SENIORITY: { en: string; fa: string }[] = [
   { en: '', fa: '' },
@@ -166,7 +183,8 @@ type Featured = Partial<Designer> & { first: string; last: string; cityId: strin
 const FEATURED: Featured[] = [
   {
     first: 'Sara', last: 'Ahmadi', cityId: 'berlin-de', role: 'product', seniority: 1,
-    skills: ['figma', 'systems', 'research', 'prototyping', 'product'],
+    skills: ['systems', 'research', 'prototyping', 'product'],
+    tools: ['figma', 'notion'],
     bio: {
       en: 'Product designer focused on SaaS, design systems and AI products.',
       fa: 'طراح محصول با تمرکز روی محصولات SaaS، دیزاین سیستم و محصولات هوش مصنوعی.',
@@ -176,43 +194,50 @@ const FEATURED: Featured[] = [
   },
   {
     first: 'Ali', last: 'Moradi', cityId: 'toronto-ca', role: 'uiux', seniority: 0,
-    skills: ['figma', 'ui', 'ux', 'wireframing', 'responsive', 'webflow'],
+    skills: ['ui', 'ux', 'wireframing', 'responsive'],
+    tools: ['figma', 'webflow'],
     bio: { en: 'UI/UX designer at a Toronto fintech. Previously built banking apps in Tehran.', fa: 'طراح UI/UX در یک فین‌تک در تورنتو. قبلاً اپ‌های بانکی را در تهران طراحی می‌کردم.' },
     verification: 'verified',
   },
   {
     first: 'Niloofar', last: 'Karimi', cityId: 'amsterdam-nl', role: 'research', seniority: 1,
     skills: ['research', 'testing', 'ia', 'flow'],
+    tools: ['miro', 'notion', 'figma'],
     bio: { en: 'Mixed-methods researcher in mobility. I run the monthly Persian UX Research circle.', fa: 'پژوهشگر ترکیبی در حوزه حمل‌ونقل. میزبان دورهمی ماهانه پژوهش تجربه کاربری فارسی‌زبان‌ها هستم.' },
     verification: 'verified',
   },
   {
     first: 'Arman', last: 'Hosseini', cityId: 'tehran-ir', role: 'system', seniority: 3,
-    skills: ['systems', 'figma', 'a11y', 'ui', 'responsive'],
+    skills: ['systems', 'a11y', 'ui', 'responsive'],
+    tools: ['figma', 'storybook', 'zeplin'],
     bio: { en: 'Leading the design system at a large Iranian super-app. RTL-first components are my thing.', fa: 'لید دیزاین سیستم در یک سوپراپ ایرانی. کامپوننت‌های راست‌به‌چپ تخصص من است.' },
     verification: 'verified',
   },
   {
     first: 'Mahsa', last: 'Rahimi', cityId: 'london-gb', role: 'interaction', seniority: 1,
-    skills: ['prototyping', 'motion', 'framer', 'figma'],
+    skills: ['prototyping', 'motion'],
+    tools: ['framer', 'figma', 'protopie'],
     bio: { en: 'Interaction designer in media & streaming. Motion is how interfaces explain themselves.', fa: 'طراح تعامل در حوزه رسانه و استریم. موشن زبانی است که رابط با آن خودش را توضیح می‌دهد.' },
     verification: 'email',
   },
   {
     first: 'Reza', last: 'Mohammadi', cityId: 'san-francisco-us', role: 'product', seniority: 4,
-    skills: ['product', 'figma', 'ai', 'prototyping', 'systems', 'research'],
+    skills: ['product', 'prototyping', 'systems', 'research'],
+    tools: ['figma', 'ai', 'notion'],
     bio: { en: 'Staff designer working on AI developer tools. Ex-Tehran startup founder.', fa: 'طراح استف روی ابزارهای هوش مصنوعی برای توسعه‌دهندگان. پیش‌تر بنیان‌گذار یک استارتاپ در تهران.' },
     verification: 'verified',
   },
   {
     first: 'Parsa', last: 'Ebrahimi', cityId: 'dubai-ae', role: 'ui', seniority: 0,
-    skills: ['ui', 'figma', 'motion', 'responsive'],
+    skills: ['ui', 'motion', 'responsive'],
+    tools: ['figma', 'adobexd'],
     bio: { en: 'UI designer for e-commerce brands across the Gulf. Bilingual EN/AR/FA interfaces.', fa: 'طراح رابط کاربری برای برندهای فروشگاهی حاشیه خلیج فارس. رابط‌های چندزبانه.' },
     verification: 'email',
   },
   {
     first: 'Negar', last: 'Jalali', cityId: 'stockholm-se', role: 'writer', seniority: 1,
     skills: ['ux', 'ia', 'a11y', 'research'],
+    tools: ['notion', 'figma'],
     bio: { en: 'UX writer. Words are interface too. Currently shaping voice & tone for a Nordic bank.', fa: 'نویسنده تجربه کاربری. کلمه‌ها هم رابط کاربری‌اند. فعلاً روی لحن یک بانک اسکاندیناویایی کار می‌کنم.' },
     verification: 'verified',
   },
@@ -271,6 +296,7 @@ function generate(): Designer[] {
       title: roleTitle(f.role, f.seniority ?? 0),
       cityId: f.cityId,
       skills: f.skills!,
+      tools: f.tools ?? [],
       bio: f.bio!,
       links: f.links ?? makeLinks(f.first, f.last, i),
       joined: new Date(now - (300 + i * 23) * DAY).toISOString(),
@@ -297,8 +323,12 @@ function generate(): Designer[] {
       const base = [...ROLE_SKILLS[role]].sort(() => rnd() - 0.5)
       const total = 3 + Math.floor(rnd() * 5)
       const skills = new Set<SkillId>(base.slice(0, Math.min(total, base.length)))
-      if (rnd() < 0.7) skills.add('figma')
       while (skills.size < total) skills.add(pick(ALL_SKILLS))
+      const toolBase = [...ROLE_TOOLS[role]].sort(() => rnd() - 0.5)
+      const toolTotal = 1 + Math.floor(rnd() * 4)
+      const tools = new Set<ToolId>(toolBase.slice(0, Math.min(toolTotal, toolBase.length)))
+      if (rnd() < 0.75) tools.add('figma')
+      while (tools.size < toolTotal) tools.add(pick(ALL_TOOLS))
       const a = pick(FOCUS)
       let b = pick(FOCUS)
       if (b === a) b = FOCUS[(FOCUS.indexOf(a) + 3) % FOCUS.length]
@@ -312,6 +342,7 @@ function generate(): Designer[] {
         title: roleTitle(role, sen),
         cityId,
         skills: [...skills].slice(0, 8),
+        tools: [...tools].slice(0, 6),
         bio: pick(BIOS[role])(a, b),
         links: makeLinks(first[0], last[0], n),
         joined: new Date(now - age * DAY - Math.floor(rnd() * DAY)).toISOString(),

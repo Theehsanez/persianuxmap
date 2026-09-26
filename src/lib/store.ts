@@ -1,11 +1,11 @@
 import { create } from 'zustand'
-import type { Locale, RoleId, SkillId } from '../data/taxonomy'
+import type { Locale, RoleId, SkillId, ToolId } from '../data/taxonomy'
 import type { Designer } from '../data/designers'
 import { api, session } from '../api/client'
 import type { Account as ApiAccount } from '../api/contract'
 
-export type Filters = { q: string; roles: RoleId[]; skills: SkillId[]; countries: string[]; cities: string[] }
-export const EMPTY_FILTERS: Filters = { q: '', roles: [], skills: [], countries: [], cities: [] }
+export type Filters = { q: string; roles: RoleId[]; skills: SkillId[]; tools: ToolId[]; countries: string[]; cities: string[] }
+export const EMPTY_FILTERS: Filters = { q: '', roles: [], skills: [], tools: [], countries: [], cities: [] }
 
 /** A signed-in person who has finished onboarding (has a profile). */
 export type Account = Omit<ApiAccount, 'profile'> & { profile: Designer }
@@ -41,7 +41,7 @@ type State = {
 
   setLocale: (l: Locale) => void
   setFilters: (f: Partial<Filters>) => void
-  toggleFilter: <K extends 'roles' | 'skills' | 'countries' | 'cities'>(k: K, v: Filters[K][number]) => void
+  toggleFilter: <K extends 'roles' | 'skills' | 'tools' | 'countries' | 'cities'>(k: K, v: Filters[K][number]) => void
   clearFilters: () => void
   openDesigner: (id: string) => void
   openMe: (edit?: boolean) => void

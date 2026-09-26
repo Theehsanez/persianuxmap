@@ -7,7 +7,7 @@ import { useT } from '../lib/i18n'
 import { Avatar } from './Avatar'
 import { ProfileContent } from './Profile'
 import { Button, Field, Toggle, inputCls, VerificationBadge } from './ui'
-import { BIO_MAX, CityAutocomplete, LinkFields, PhotoPicker, RolePicker, SkillPicker, draftErrors, draftFromDesigner, type Draft } from './ProfileForm'
+import { BIO_MAX, CityAutocomplete, LinkFields, PhotoPicker, RolePicker, SkillPicker, ToolPicker, draftErrors, draftFromDesigner, type Draft } from './ProfileForm'
 import { focusDesignerOnMap } from './SearchBox'
 import { applyAccount, call, signOutEverywhere, toProfileInput } from '../lib/actions'
 import { session } from '../api/client'
@@ -350,9 +350,14 @@ function EditProfile() {
           </>
         )}
         {tab === 'skills' && (
-          <Field label={t.skills} error={touched && errs.skills && t.skillsMin(n(MIN_SKILLS))}>
-            <SkillPicker value={draft.skills} onChange={(skills) => set({ skills })} />
-          </Field>
+          <>
+            <Field label={t.skills} error={touched && errs.skills && t.skillsMin(n(MIN_SKILLS))}>
+              <SkillPicker value={draft.skills} onChange={(skills) => set({ skills })} />
+            </Field>
+            <Field label={t.tools} optional={t.optional}>
+              <ToolPicker value={draft.tools} onChange={(tools) => set({ tools })} />
+            </Field>
+          </>
         )}
         {tab === 'links' && <LinkFields draft={draft} set={set} showErrors={touched} />}
       </div>

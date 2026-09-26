@@ -1,7 +1,8 @@
 import { eq, inArray } from 'drizzle-orm'
 import type { AdminDesignerT, AdminOverviewT, AdminReportT } from '../api/contract'
+import { liveSkills, liveTools } from '../api/shared'
 import { cityById } from '../data/geo'
-import type { RoleId, SkillId } from '../data/taxonomy'
+import type { RoleId } from '../data/taxonomy'
 import { getDb, schema } from './db'
 
 const { users, profiles, sessions, reports } = schema
@@ -23,7 +24,8 @@ function toAdminDesigner({ p, u }: Row, openReports: number): AdminDesignerT {
     role: p.role as RoleId,
     title: { en: p.titleEn, fa: p.titleFa },
     cityId: p.cityId,
-    skills: p.skills as SkillId[],
+    skills: liveSkills(p.skills),
+    tools: liveTools(p.tools ?? []),
     bio: { en: p.bioEn, fa: p.bioFa },
     links: {
       linkedin: p.linkedin ?? undefined,

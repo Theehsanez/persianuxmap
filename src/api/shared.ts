@@ -1,6 +1,10 @@
 import type { Designer } from '../data/designers'
-import { ROLES } from '../data/taxonomy'
+import { ROLES, skillById, toolById, type SkillId, type ToolId } from '../data/taxonomy'
 import type { ProfileInputT } from './contract'
+
+/** Drop ids that no longer exist (e.g. a skill/tool that moved list or was retired) so one stale row can't break the whole map. */
+export const liveSkills = (skills: string[]): SkillId[] => skills.filter((s): s is SkillId => s in skillById)
+export const liveTools = (tools: string[]): ToolId[] => tools.filter((t): t is ToolId => t in toolById)
 
 export const normalizeUrl = (u?: string) => {
   const s = (u ?? '').trim()
@@ -37,6 +41,7 @@ export function designerFromInput(input: ProfileInputT, base: Pick<Designer, 'id
     title: title ? { en: title, fa: title } : { en: role.en, fa: role.fa },
     cityId: input.cityId,
     skills: input.skills,
+    tools: input.tools,
     bio: { en: bio, fa: bio },
     links: {
       linkedin: normalizeUrl(input.linkedin),
