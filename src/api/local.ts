@@ -1,7 +1,10 @@
 import { implement, ORPCError, createRouterClient } from '@orpc/server'
 import { contract, type Account } from './contract'
-import { designerFromInput, randomCode } from './shared'
+import { designerFromInput, liveSkills, liveTools, randomCode } from './shared'
 import { DEMO_DESIGNERS, type Designer } from '../data/designers'
+
+/** A profile saved to localStorage before a skill/tool was retired could still reference it — drop those ids. */
+const sanitize = (p: Designer | null): Designer | null => (p ? { ...p, skills: liveSkills(p.skills), tools: liveTools(p.tools) } : p)
 
 /**
  * In-browser implementation of the same contract, for the static GitHub Pages build (no server there).
@@ -37,7 +40,7 @@ const os = implement(contract).$context<Ctx>()
 
 const account = (s: Store, email: string): Account => {
   const a = s.accounts[email]
-  return { email, provider: a.provider, emailVerified: true, hidden: a.hidden, profile: a.profile }
+  return { email, provider: a.provider, emailVerified: true, hidden: a.hidden, profile: sanitize(a.profile) }
 }
 const open = (email: string, provider: 'google' | 'email') => {
   const s = load()
@@ -70,7 +73,7 @@ export const localRouter = os.router({
       const s = load()
       const mine = Object.values(s.accounts)
         .filter((a) => a.profile && !a.hidden)
-        .map((a) => a.profile!)
+        .map((a) => sanitize(a.profile)!)
       return [...DEMO_DESIGNERS, ...mine]
     }),
   },

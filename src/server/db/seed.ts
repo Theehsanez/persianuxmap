@@ -28,6 +28,7 @@ export async function seedIfEmpty(db: LibSQLDatabase<typeof schema>) {
     bioEn: d.bio.en,
     bioFa: d.bio.fa,
     skills: d.skills,
+    tools: d.tools,
     linkedin: d.links.linkedin ?? null,
     portfolio: d.links.portfolio ?? null,
     website: d.links.website ?? null,

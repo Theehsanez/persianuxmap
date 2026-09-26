@@ -23,6 +23,7 @@ export const toProfileInput = (d: Draft): ProfileInputT => ({
   cityId: d.cityId,
   bio: d.bio || undefined,
   skills: d.skills,
+  tools: d.tools,
   linkedin: d.linkedin || undefined,
   portfolio: d.portfolio || undefined,
   website: d.website || undefined,

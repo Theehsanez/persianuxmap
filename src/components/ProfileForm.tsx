@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, ImagePlus, Link2, Globe, MapPin, Search, Trash2, UserRound, X, Loader2 } from 'lucide-react'
-import { ROLES, SKILLS, MIN_SKILLS, MAX_SKILLS, type RoleId, type SkillId } from '../data/taxonomy'
+import { ROLES, SKILLS, TOOLS, MIN_SKILLS, MAX_SKILLS, MAX_TOOLS, type RoleId, type SkillId, type ToolId } from '../data/taxonomy'
 import { cityById, countryByCode, searchCities, norm, type City } from '../data/geo'
 import type { Designer } from '../data/designers'
 import { socialHandle } from '../api/shared'
@@ -8,6 +8,7 @@ import { useT } from '../lib/i18n'
 import { useStore } from '../lib/store'
 import { Avatar } from './Avatar'
 import { MiniMap } from './MiniMap'
+import { ToolIcon } from './ToolIcon'
 import { Button, Field, InstagramIcon, LinkedinIcon, TelegramIcon, inputCls } from './ui'
 
 export type Draft = {
@@ -17,6 +18,7 @@ export type Draft = {
   cityId: string
   bio: string
   skills: SkillId[]
+  tools: ToolId[]
   photo?: string
   hue: number
   linkedin: string
@@ -33,6 +35,7 @@ export const emptyDraft = (): Draft => ({
   cityId: '',
   bio: '',
   skills: [],
+  tools: [],
   hue: Math.floor(Math.random() * 360),
   linkedin: '',
   portfolio: '',
@@ -51,6 +54,7 @@ export function draftFromDesigner(d: Designer): Draft {
     cityId: d.cityId,
     bio: d.bio.en || d.bio.fa,
     skills: d.skills,
+    tools: d.tools,
     photo: d.avatar.photo,
     hue: d.avatar.hue,
     linkedin: d.links.linkedin ?? '',
@@ -87,6 +91,7 @@ export function designerFromDraft(d: Draft, base: Partial<Designer> = {}): Desig
     title: title ? { en: title, fa: title } : { en: roleTitle?.en ?? '', fa: roleTitle?.fa ?? '' },
     cityId: d.cityId,
     skills: d.skills,
+    tools: d.tools,
     bio: { en: d.bio.trim(), fa: d.bio.trim() },
     links: {
       linkedin: normalizeUrl(d.linkedin) || undefined,
@@ -426,6 +431,56 @@ export function SkillPicker({ value, onChange }: { value: SkillId[]; onChange: (
         })}
       </div>
       <p className={`text-xs ${full ? 'text-warn' : 'text-subtle'}`}>{full ? t.skillsMax : value.length < MIN_SKILLS ? t.skillsMin(n(MIN_SKILLS)) : ' '}</p>
+    </div>
+  )
+}
+
+export function ToolPicker({ value, onChange }: { value: ToolId[]; onChange: (s: ToolId[]) => void }) {
+  const { t, locale, n } = useT()
+  const [q, setQ] = useState('')
+  const [shake, setShake] = useState(false)
+  const full = value.length >= MAX_TOOLS
+  const list = TOOLS.filter((s) => !q || norm(s.en + ' ' + s.fa).includes(norm(q)))
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className={`${inputCls} !h-10 flex max-w-60 items-center gap-2`}>
+          <Search size={15} className="shrink-0 text-subtle" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t.tools + '…'} className="h-full min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-subtle" />
+        </div>
+        <span className="text-[12.5px] tabular-nums text-muted">{t.toolsSelected(n(value.length), n(MAX_TOOLS))}</span>
+      </div>
+      <div className={`flex flex-wrap gap-2 ${shake ? 'animate-[pop_0.3s]' : ''}`}>
+        {list.map((s) => {
+          const on = value.includes(s.id)
+          const disabled = !on && full
+          return (
+            <button
+              key={s.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => {
+                if (on) onChange(value.filter((x) => x !== s.id))
+                else if (full) {
+                  setShake(true)
+                  setTimeout(() => setShake(false), 300)
+                } else onChange([...value, s.id])
+              }}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-[13.5px] transition-all active:scale-[0.97] ${
+                on
+                  ? 'border-accent/55 bg-accent-soft text-accent-strong'
+                  : disabled
+                    ? 'border-line text-subtle opacity-50'
+                    : 'border-line bg-white/[0.02] text-text/85 hover:border-line-strong hover:text-text'
+              }`}
+            >
+              <ToolIcon id={s.id} size={15} />
+              {s[locale]}
+            </button>
+          )
+        })}
+      </div>
+      <p className="text-xs text-subtle">{full ? t.toolsMax : t.toolsHint}</p>
     </div>
   )
 }

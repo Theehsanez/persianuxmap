@@ -3,29 +3,32 @@ import { Check, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useStore, type Filters } from '../lib/store'
 import { filterCount, useFilteredDesigners, usePublicDesigners, groupByCity } from '../lib/data'
 import { useT } from '../lib/i18n'
-import { ROLES, SKILLS, roleById, skillById } from '../data/taxonomy'
+import { ROLES, SKILLS, TOOLS, roleById, skillById, toolById } from '../data/taxonomy'
 import { countryByCode, cityById, norm } from '../data/geo'
 import { mapApi } from '../map/mapApi'
 import { Button, Chip, Sheet, useDismiss } from './ui'
+import { ToolIcon } from './ToolIcon'
 
-type Key = 'roles' | 'skills' | 'countries' | 'cities'
+type Key = 'roles' | 'skills' | 'tools' | 'countries' | 'cities'
 
 function useOptionCounts() {
   const all = usePublicDesigners()
   return useMemo(() => {
     const roles = new Map<string, number>()
     const skills = new Map<string, number>()
+    const tools = new Map<string, number>()
     const countries = new Map<string, number>()
     const cities = new Map<string, number>()
     for (const d of all) {
       roles.set(d.role, (roles.get(d.role) ?? 0) + 1)
       d.skills.forEach((s) => skills.set(s, (skills.get(s) ?? 0) + 1))
+      d.tools.forEach((s) => tools.set(s, (tools.get(s) ?? 0) + 1))
       const c = cityById[d.cityId]
       if (!c) continue
       countries.set(c.country, (countries.get(c.country) ?? 0) + 1)
       cities.set(c.id, (cities.get(c.id) ?? 0) + 1)
     }
-    return { roles, skills, countries, cities }
+    return { roles, skills, tools, countries, cities }
   }, [all])
 }
 
@@ -50,6 +53,18 @@ function OptionList({ k, query }: { k: Key; query?: string }) {
   const opts: { id: string; label: ReactNode; text: string; count: number }[] = useMemo(() => {
     if (k === 'roles') return ROLES.map((r) => ({ id: r.id, label: r[locale], text: r.en + r.fa, count: counts.roles.get(r.id) ?? 0 }))
     if (k === 'skills') return SKILLS.map((s) => ({ id: s.id, label: s[locale], text: s.en + s.fa, count: counts.skills.get(s.id) ?? 0 })).sort((a, b) => b.count - a.count)
+    if (k === 'tools')
+      return TOOLS.map((s) => ({
+        id: s.id,
+        label: (
+          <span className="flex items-center gap-1.5">
+            <ToolIcon id={s.id} size={14} />
+            {s[locale]}
+          </span>
+        ),
+        text: s.en + s.fa,
+        count: counts.tools.get(s.id) ?? 0,
+      })).sort((a, b) => b.count - a.count)
     if (k === 'countries')
       return [...counts.countries.entries()]
         .sort((a, b) => b[1] - a[1])
@@ -86,6 +101,7 @@ function OptionList({ k, query }: { k: Key; query?: string }) {
   return (
     <div className="flex flex-col">
       {k === 'skills' && <p className="px-2.5 pt-1 pb-2 text-[11.5px] text-subtle">{t.skillsAllHint}</p>}
+      {k === 'tools' && <p className="px-2.5 pt-1 pb-2 text-[11.5px] text-subtle">{t.toolsAllHint}</p>}
       {shown.map((o) => {
         const on = selected.includes(o.id)
         return (
@@ -121,7 +137,7 @@ function FilterDropdown({ k, label }: { k: Key; label: string }) {
   const selected = useStore((s) => s.filters[k]) as string[]
   const setFilters = useStore((s) => s.setFilters)
   useDismiss(open, () => setOpen(false), ref)
-  const searchable = k === 'countries' || k === 'cities' || k === 'skills'
+  const searchable = k === 'countries' || k === 'cities' || k === 'skills' || k === 'tools'
 
   const summary =
     selected.length === 0
@@ -131,9 +147,11 @@ function FilterDropdown({ k, label }: { k: Key; label: string }) {
           ? roleById[selected[0] as keyof typeof roleById][locale]
           : k === 'skills'
             ? skillById[selected[0] as keyof typeof skillById][locale]
-            : k === 'countries'
-              ? countryByCode[selected[0]]?.[locale]
-              : cityById[selected[0]]?.[locale]
+            : k === 'tools'
+              ? toolById[selected[0] as keyof typeof toolById][locale]
+              : k === 'countries'
+                ? countryByCode[selected[0]]?.[locale]
+                : cityById[selected[0]]?.[locale]
         : `${label} · ${selected.length.toLocaleString(locale === 'fa' ? 'fa-IR' : 'en')}`
 
   return (
@@ -190,6 +208,7 @@ export function FilterBar() {
     <div className="flex flex-wrap items-center gap-2">
       <FilterDropdown k="roles" label={t.role} />
       <FilterDropdown k="skills" label={t.skills} />
+      <FilterDropdown k="tools" label={t.tools} />
       <FilterDropdown k="countries" label={t.country} />
       <FilterDropdown k="cities" label={t.city} />
       {filters.q && (
@@ -259,6 +278,14 @@ export function FilterSheet() {
       <Section title={t.skills}>
         {SKILLS.map((s) => (
           <Chip key={s.id} active={filters.skills.includes(s.id)} onClick={() => toggle('skills', s.id)}>
+            {s[locale]}
+          </Chip>
+        ))}
+      </Section>
+      <Section title={t.tools}>
+        {TOOLS.map((s) => (
+          <Chip key={s.id} active={filters.tools.includes(s.id)} onClick={() => toggle('tools', s.id)}>
+            <ToolIcon id={s.id} size={14} />
             {s[locale]}
           </Chip>
         ))}

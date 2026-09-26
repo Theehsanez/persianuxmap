@@ -30,6 +30,7 @@ export const profiles = sqliteTable(
     bioEn: text('bio_en').notNull().default(''),
     bioFa: text('bio_fa').notNull().default(''),
     skills: text('skills', { mode: 'json' }).$type<string[]>().notNull(),
+    tools: text('tools', { mode: 'json' }).$type<string[]>().notNull().default([]),
     linkedin: text('linkedin'),
     portfolio: text('portfolio'),
     website: text('website'),

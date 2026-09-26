@@ -5,7 +5,7 @@ import { useT } from '../lib/i18n'
 import { MAX_SKILLS, MIN_SKILLS } from '../data/taxonomy'
 import { cityById, countryByCode } from '../data/geo'
 import { Button, CloseButton, Field, Logo, inputCls, useEscape, useIsMobile } from './ui'
-import { BIO_MAX, CityAutocomplete, LinkFields, PhotoPicker, RolePicker, SkillPicker, designerFromDraft, draftErrors, emptyDraft, type Draft } from './ProfileForm'
+import { BIO_MAX, CityAutocomplete, LinkFields, PhotoPicker, RolePicker, SkillPicker, ToolPicker, designerFromDraft, draftErrors, emptyDraft, type Draft } from './ProfileForm'
 import { ProfileContent } from './Profile'
 import { MiniMap } from './MiniMap'
 import { focusDesignerOnMap } from './SearchBox'
@@ -106,6 +106,7 @@ export function Onboarding() {
   const [verifying, setVerifying] = useState(false)
   const [inbox, setInbox] = useState(false)
   const [cooldown, setCooldown] = useState(0)
+  const [profileId, setProfileId] = useState<string | null>(null)
   const set = (p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p }))
   const errs = draftErrors(draft)
   const scroller = useRef<HTMLDivElement>(null)
@@ -122,6 +123,26 @@ export function Onboarding() {
   const prefill = useStore((s) => s.onboardingPrefill)
   const googleOAuth = useStore((s) => s.authConfig.googleOAuth)
 
+  /** Actually create the profile — as soon as the draft is complete and the email is verified, not when the preview button is clicked. */
+  const saveProfile = async () => {
+    const account = await call((a) => a.profile.save(toProfileInput(draft)))
+    const profile = account?.profile
+    if (!account || !profile) return null
+    savedDraft = null
+    applyAccount(account)
+    setProfileId(profile.id)
+    return profile.id
+  }
+
+  /** Save (if needed) then move to the preview — the profile must already exist by the time it's shown. */
+  const goToPreview = async () => {
+    setJoining(true)
+    const id = profileId ?? (await saveProfile())
+    setJoining(false)
+    if (!id) return
+    go(5)
+  }
+
   /** After sign-in: members with a profile go straight to it; everyone else continues onboarding. */
   const afterSignIn = async (fallbackStep: number) => {
     const me = await call((a) => a.auth.me())
@@ -131,6 +152,10 @@ export function Onboarding() {
       setOpen(false)
       toast(t.welcomeBack, 'success')
       openMe()
+      return
+    }
+    if (fallbackStep === 5) {
+      await goToPreview()
       return
     }
     go(fallbackStep)
@@ -143,6 +168,7 @@ export function Onboarding() {
     setTouched(false)
     setCode('')
     setInbox(false)
+    setProfileId(null)
     if (prefill) {
       setProvider('google')
       setEmail(prefill.email)
@@ -251,20 +277,21 @@ export function Onboarding() {
 
   const preview = useMemo(() => designerFromDraft(draft, { verification: 'email' }), [draft])
 
-  const join = async () => {
-    setJoining(true)
-    const account = await call((a) => a.profile.save(toProfileInput(draft)))
-    setJoining(false)
-    const profile = account?.profile
-    if (!account || !profile) return
-    savedDraft = null
-    applyAccount(account)
+  /** The profile was already created before this preview was shown (see goToPreview) — this just takes the person to the map. */
+  const finish = async () => {
+    let id = profileId
+    if (!id) {
+      setJoining(true)
+      id = await saveProfile()
+      setJoining(false)
+      if (!id) return
+    }
     setOpen(false)
     clearFilters()
     toast(t.welcomeToast, 'success')
     setTimeout(() => {
-      focusDesignerOnMap(profile.id)
-      setPulse(profile.id)
+      focusDesignerOnMap(id)
+      setPulse(id)
       setTimeout(() => setPulse(null), 6000)
     }, 150)
   }
@@ -381,7 +408,12 @@ export function Onboarding() {
         return (
           <div className="flex flex-col gap-6">
             <Heading title={t.s3Title} body={t.s3Body(n(MIN_SKILLS), n(MAX_SKILLS))} />
-            <SkillPicker value={draft.skills} onChange={(skills) => set({ skills })} />
+            <Field label={t.skills}>
+              <SkillPicker value={draft.skills} onChange={(skills) => set({ skills })} />
+            </Field>
+            <Field label={t.tools} optional={t.optional}>
+              <ToolPicker value={draft.tools} onChange={(tools) => set({ tools })} />
+            </Field>
           </div>
         )
       case 3:
@@ -509,12 +541,17 @@ export function Onboarding() {
               {step === 5 ? t.editDetails : t.back}
             </Button>
             {step === 5 ? (
-              <Button variant="primary" size="lg" onClick={join} disabled={joining} icon={joining ? <Loader2 size={17} className="animate-spin" /> : <MapPin size={17} />}>
+              <Button variant="primary" size="lg" onClick={finish} disabled={joining} icon={joining ? <Loader2 size={17} className="animate-spin" /> : <MapPin size={17} />}>
                 {t.joinMap}
               </Button>
             ) : step === 4 && !verified ? (
               <Button variant="primary" onClick={() => tryVerify()} disabled={code.length < 6 || verifying}>
                 {t.verify}
+              </Button>
+            ) : step === 4 && verified ? (
+              <Button variant="primary" onClick={goToPreview} disabled={joining} icon={joining ? <Loader2 size={17} className="animate-spin" /> : undefined}>
+                {t.continue}
+                {!joining && <ArrowRight size={16} className="rtl:-scale-x-100" />}
               </Button>
             ) : (
               <Button variant="primary" onClick={next} className={canNext ? '' : 'opacity-60'}>

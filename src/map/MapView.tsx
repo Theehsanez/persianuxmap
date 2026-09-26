@@ -282,7 +282,7 @@ export function MapView() {
   const highlightNames = useMemo(() => {
     const codes = new Set(filters.countries)
     filters.cities.forEach((c) => cityById[c] && codes.add(cityById[c].country))
-    if (!codes.size && (filters.roles.length || filters.skills.length || filters.q)) filtered.forEach((d) => codes.add(cityById[d.cityId].country))
+    if (!codes.size && (filters.roles.length || filters.skills.length || filters.tools.length || filters.q)) filtered.forEach((d) => codes.add(cityById[d.cityId].country))
     return [...codes].map((c) => countryByCode[c]?.atlas).filter(Boolean) as string[]
   }, [filters, filtered])
 

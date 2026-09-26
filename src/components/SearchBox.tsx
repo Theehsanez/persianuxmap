@@ -4,10 +4,11 @@ import { useStore } from '../lib/store'
 import { searchAll, usePublicDesigners, groupByCity } from '../lib/data'
 import { useT } from '../lib/i18n'
 import { cityById, countryByCode } from '../data/geo'
-import { roleById, skillById, type RoleId, type SkillId } from '../data/taxonomy'
+import { roleById, skillById, toolById, type RoleId, type SkillId, type ToolId } from '../data/taxonomy'
 import { mapApi } from '../map/mapApi'
 import { scatter, splitZoom } from '../map/layout'
 import { Avatar } from './Avatar'
+import { ToolIcon } from './ToolIcon'
 import { useDismiss } from './ui'
 
 type Item = { key: string; group: keyof ReturnType<typeof useT>['t']['searchHeadings']; icon: ReactNode; label: ReactNode; meta?: ReactNode; run: () => void }
@@ -122,6 +123,20 @@ export function SearchBox({ compact = false }: { compact?: boolean }) {
           setText('')
           done()
           if (!filters.skills.includes(s)) toggleFilter('skills', s)
+        },
+      }),
+    )
+    res.tools.forEach((s: ToolId) =>
+      out.push({
+        key: 't' + s,
+        group: 'tools',
+        icon: <ToolIcon id={s} size={16} />,
+        label: toolById[s][locale],
+        meta: t.searchFilterFor + ' ' + t.tools.toLowerCase(),
+        run: () => {
+          setText('')
+          done()
+          if (!filters.tools.includes(s)) toggleFilter('tools', s)
         },
       }),
     )

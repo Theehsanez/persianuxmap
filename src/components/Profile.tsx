@@ -2,11 +2,12 @@ import { ArrowUpRight, CalendarDays, Flag, Globe, Link2, MapPin, ShieldCheck } f
 import type { Designer } from '../data/designers'
 import { instagramUrl, telegramUrl } from '../api/shared'
 import { cityById, countryByCode } from '../data/geo'
-import { skillById } from '../data/taxonomy'
+import { skillById, toolById } from '../data/taxonomy'
 import { useT, fmtMonthYear, DICTS } from '../lib/i18n'
 import { profileLink, useStore } from '../lib/store'
 import { usePublicDesigners } from '../lib/data'
 import { Avatar } from './Avatar'
+import { ToolIcon } from './ToolIcon'
 import { Button, btnCls, InstagramIcon, LinkedinIcon, TelegramIcon, CloseButton, Sheet, VerificationBadge, useEscape, useIsMobile } from './ui'
 import { focusDesignerOnMap } from './SearchBox'
 import { MyProfile } from './MyProfile'
@@ -98,6 +99,31 @@ export function ProfileContent({ d, preview = false, bare = false }: { d: Design
           })}
         </div>
       </div>
+
+      {d.tools.length > 0 && (
+        <div className="px-6 pt-6">
+          <h3 className="mb-2.5 text-[12px] font-medium tracking-wide text-subtle uppercase">{t.tools}</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {d.tools.map((s) => {
+              const on = filters.tools.includes(s)
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  disabled={preview}
+                  onClick={() => toggleFilter('tools', s)}
+                  className={`flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-[12.5px] transition-colors disabled:cursor-default ${
+                    on ? 'border-accent/45 bg-accent-soft text-accent-strong' : 'border-line bg-white/[0.03] text-text/85 enabled:hover:border-line-strong'
+                  }`}
+                >
+                  <ToolIcon id={s} size={13} />
+                  {toolById[s]?.[locale]}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2 px-6 pt-6">
         {d.links.portfolio && (

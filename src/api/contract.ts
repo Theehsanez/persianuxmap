@@ -1,6 +1,6 @@
 import { oc } from '@orpc/contract'
 import { z } from 'zod'
-import { ROLES, SKILLS, MAX_SKILLS, MIN_SKILLS } from '../data/taxonomy'
+import { ROLES, SKILLS, TOOLS, MAX_SKILLS, MIN_SKILLS, MAX_TOOLS } from '../data/taxonomy'
 
 /**
  * The API contract — the single source of truth shared by the server (Drizzle + SQLite)
@@ -10,6 +10,7 @@ import { ROLES, SKILLS, MAX_SKILLS, MIN_SKILLS } from '../data/taxonomy'
 const L10n = z.object({ en: z.string(), fa: z.string() })
 const RoleId = z.enum(ROLES.map((r) => r.id) as [(typeof ROLES)[number]['id'], ...(typeof ROLES)[number]['id'][]])
 const SkillId = z.enum(SKILLS.map((s) => s.id) as [(typeof SKILLS)[number]['id'], ...(typeof SKILLS)[number]['id'][]])
+const ToolId = z.enum(TOOLS.map((t) => t.id) as [(typeof TOOLS)[number]['id'], ...(typeof TOOLS)[number]['id'][]])
 export const Verification = z.enum(['unverified', 'email', 'pending', 'verified'])
 
 export const DesignerSchema = z.object({
@@ -19,6 +20,7 @@ export const DesignerSchema = z.object({
   title: L10n,
   cityId: z.string(),
   skills: z.array(SkillId),
+  tools: z.array(ToolId),
   bio: L10n,
   links: z.object({
     linkedin: z.string().optional(),
@@ -84,6 +86,7 @@ export const ProfileInput = z
     cityId: z.string(),
     bio: z.string().trim().max(180).optional(),
     skills: z.array(SkillId).min(MIN_SKILLS).max(MAX_SKILLS),
+    tools: z.array(ToolId).max(MAX_TOOLS).default([]),
     linkedin: url,
     portfolio: url,
     website: url,

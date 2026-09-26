@@ -1,0 +1,1 @@
+ALTER TABLE `profiles` ADD `tools` text DEFAULT '[]' NOT NULL;

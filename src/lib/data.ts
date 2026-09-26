@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useStore, selectPublicDesigners, type Filters } from './store'
 import type { Designer } from '../data/designers'
 import { cityById, countryByCode, COUNTRIES, norm, CITIES, type City } from '../data/geo'
-import { ROLES, SKILLS, type RoleId, type SkillId } from '../data/taxonomy'
+import { ROLES, SKILLS, TOOLS, type RoleId, type SkillId, type ToolId } from '../data/taxonomy'
 
 export function usePublicDesigners() {
   const designers = useStore((s) => s.designers)
@@ -31,6 +31,7 @@ function haystack(d: Designer) {
       c?.en, c?.fa, country?.en, country?.fa,
       role?.en, role?.fa,
       ...d.skills.flatMap((s) => [SKILLS.find((x) => x.id === s)?.en, SKILLS.find((x) => x.id === s)?.fa]),
+      ...d.tools.flatMap((s) => [TOOLS.find((x) => x.id === s)?.en, TOOLS.find((x) => x.id === s)?.fa]),
     ].join(' '),
   )
 }
@@ -47,6 +48,7 @@ export function matches(d: Designer, f: Filters) {
   if (!c) return false
   if (f.roles.length && !f.roles.includes(d.role)) return false
   if (f.skills.length && !f.skills.every((s) => d.skills.includes(s))) return false // AND: must know all
+  if (f.tools.length && !f.tools.every((s) => d.tools.includes(s))) return false // AND: must use all
   if (f.countries.length && !f.countries.includes(c.country)) return false
   if (f.cities.length && !f.cities.includes(d.cityId)) return false
   if (f.q) {
@@ -62,7 +64,7 @@ export function useFilteredDesigners() {
   return useMemo(() => all.filter((d) => matches(d, filters)), [all, filters])
 }
 
-export const filterCount = (f: Filters) => f.roles.length + f.skills.length + f.countries.length + f.cities.length + (f.q ? 1 : 0)
+export const filterCount = (f: Filters) => f.roles.length + f.skills.length + f.tools.length + f.countries.length + f.cities.length + (f.q ? 1 : 0)
 
 export type CityGroup = { city: City; members: Designer[] }
 
@@ -101,12 +103,13 @@ export type SearchResults = {
   cities: { city: City; n: number }[]
   countries: { code: string; n: number }[]
   skills: SkillId[]
+  tools: ToolId[]
   roles: RoleId[]
 }
 
 export function searchAll(all: Designer[], query: string): SearchResults {
   const q = norm(query)
-  const empty: SearchResults = { designers: [], cities: [], countries: [], skills: [], roles: [] }
+  const empty: SearchResults = { designers: [], cities: [], countries: [], skills: [], tools: [], roles: [] }
   if (!q) return empty
   const starts = (s: string) => norm(s).startsWith(q) || norm(s).split(/[\s/-]/).some((w) => w.startsWith(q))
   const designers = all
@@ -129,6 +132,7 @@ export function searchAll(all: Designer[], query: string): SearchResults {
     .sort((a, b) => b.n - a.n)
     .slice(0, 3)
   const skills = SKILLS.filter((s) => starts(s.en) || starts(s.fa)).map((s) => s.id).slice(0, 4)
+  const tools = TOOLS.filter((s) => starts(s.en) || starts(s.fa)).map((s) => s.id).slice(0, 4)
   const roles = ROLES.filter((r) => starts(r.en) || starts(r.fa)).map((r) => r.id).slice(0, 3)
-  return { designers, cities, countries, skills, roles }
+  return { designers, cities, countries, skills, tools, roles }
 }
